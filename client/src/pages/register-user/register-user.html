@@ -1,0 +1,38 @@
+<!--
+  Generated template for the RegisterUser page.
+
+  See http://ionicframework.com/docs/v2/components/#navigation for more info on
+  Ionic pages and navigation.
+-->
+<ion-header>
+
+  <ion-navbar>
+    <ion-title>Rejestracja użytkownika</ion-title>
+  </ion-navbar>
+
+</ion-header>
+
+
+<ion-content padding>
+
+	<form (submit)="register()" #form="ngForm">
+		<ion-list no-lines>
+			<ion-item>
+				<ion-input type="text" name="login" [(ngModel)]="login" placeholder="Proszę podać nazwę użytkownika" required></ion-input>
+			</ion-item>
+			<ion-item>
+				<ion-input type="email" name="email" [(ngModel)]="email" placeholder="Proszę podać adres e-mail" required></ion-input>
+			</ion-item>
+			<ion-item>
+				<ion-input type="password" name="password" [(ngModel)]="password" placeholder="Proszę podać hasło" required></ion-input>
+			</ion-item>
+			<ion-item>
+				<ion-input type="password" name="password2" [(ngModel)]="password2" placeholder="Proszę powtórzyć hasło" required></ion-input>
+			</ion-item>
+			<ion-item>
+				<button ion-button full type="submit" [disabled]="form.form.invalid">Zarejestruj się</button>
+			</ion-item>
+		</ion-list>
+	</form>
+
+</ion-content>
