@@ -14,10 +14,14 @@ export class ConfigurationService {
 
 	constructor(public http: Http) {
 		this.config = {
-			serverURL: 'http://localhost:3000'
+			serverUrl: 'http://localhost:3000/'
 		};
 	}
-	public get(property_name: string): string {
-		return this.config[property_name];
+	public getServerUrl(): string {
+		let serverUrl = this.config.serverUrl;
+		if (String(this.config.serverUrl).substr(this.config.serverUrl.length - 1, 1) === '/') {
+			serverUrl = String(this.config.serverUrl).substr(0, this.config.serverUrl.length - 1);
+		}
+		return serverUrl;
 	}
 }

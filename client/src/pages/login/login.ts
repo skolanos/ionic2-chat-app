@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { NavController, NavParams, AlertController, LoadingController, Loading } from 'ionic-angular';
 
 import { AuthenticationService } from '../../providers/authentication-service';
+import { SocketioService } from '../../providers/socketio-service';
 import { HomePage } from '../home/home';
 import { RegisterUserPage } from '../register-user/register-user';
 
@@ -26,7 +27,8 @@ export class LoginPage {
 		public navParams: NavParams,
 		private alertCtrl: AlertController,
 		private loadingCtrl: LoadingController,
-		private authenticationService: AuthenticationService
+		private authenticationService: AuthenticationService,
+		private socketioService: SocketioService
 	) {
 		this.email = '';
 		this.password = ''
@@ -39,9 +41,9 @@ export class LoginPage {
 	public login(): void {
 		this.showProcessing();
 		this.authenticationService.login(this.email, this.password).subscribe((value: any) => {
-			console.log('LoginPage.login():', value);
 			this.hideProcessing();
 			if (this.authenticationService.getUserToken() !== '') {
+				this.socketioService.emitLogin();
 				this.navCtrl.setRoot(HomePage);
 			}
 			else {

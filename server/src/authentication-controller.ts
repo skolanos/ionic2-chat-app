@@ -1,6 +1,8 @@
+import * as jwt from 'jsonwebtoken';
 import { Observable } from 'rxjs/Observable';
 import { Subscriber } from 'rxjs/Subscriber';
 
+import { serverConfig } from './server-config';
 import { dataModel } from './data-model';
 
 const authenticationCtrl = {
@@ -9,6 +11,21 @@ const authenticationCtrl = {
 			observer.next({ error: (-2), message: 'Nieprawidłowy adres e-mail albo hasło użytkownika' });
 			observer.complete();
 		});
+	},
+	authenticateRequest: (token: string, callback): void => {
+		if (token) {
+			jwt.verify(token, serverConfig.jsonwebtoken.secret, (err, decoded) => {
+				if (err) {
+					callback({ error: (-1), message: 'Błąd weryfikacji użytkownika'}, undefined);
+				}
+				else {
+					callback(undefined, decoded);
+				}
+			});
+		}
+		else {
+			callback({ error: (-1), message: 'Błąd weryfikacji użytkownika'}, undefined);
+		}
 	},
 	login: (req): Observable<any> => {
 		const validateParams = (req): boolean => {

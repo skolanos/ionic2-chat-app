@@ -24,7 +24,7 @@ export class AuthenticationService {
 		return this.userToken;
 	}
 	public login(email: string, password: string): Observable<Response> {
-		return this.http.post(this.configurationService.get('serverURL') + '/api/user-login', JSON.stringify({
+		return this.http.post(this.configurationService.getServerUrl() + '/api/user-login', JSON.stringify({
 			email: email,
 			password: password
 		}), {
@@ -32,14 +32,14 @@ export class AuthenticationService {
 		}).map((response: Response) => {
 			let value: any = response.json();
 			if (value.status === 0) {
-				this.userToken = value.data.userToken;
+				this.userToken = value.data.token;
 			}
 
 			return value;
 		});
 	}
 	public register(login: string, email: string, password: string, password2: string): Observable<Response> {
-		return this.http.post(this.configurationService.get('serverURL') + '/api/user-register', JSON.stringify({
+		return this.http.post(this.configurationService.getServerUrl() + '/api/user-register', JSON.stringify({
 			login: login,
 			email: email,
 			password: password,

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { NavController, NavParams, AlertController, LoadingController, Loading } from 'ionic-angular';
 
 import { AuthenticationService } from '../../providers/authentication-service';
+import { SocketioService } from '../../providers/socketio-service';
 import { HomePage } from '../home/home';
 
 /*
@@ -27,7 +28,8 @@ export class RegisterUserPage {
 		public navParams: NavParams,
 		private alertCtrl: AlertController,
 		private loadingCtrl: LoadingController,
-		private authenticationService: AuthenticationService
+		private authenticationService: AuthenticationService,
+		private socketioService: SocketioService
 	) {
 		this.login = '';
 		this.email = '';
@@ -50,13 +52,12 @@ export class RegisterUserPage {
 		if (this.checkForm()) {
 			this.showProcessing();
 			this.authenticationService.register(this.login, this.email, this.password, this.password2).subscribe((value: any) => {
-				console.log('RegisterUserPage.register(): ', value);
 				if (value.status === 0) {
 					// zarejestrowano użytkownika więc jego automatyczne wlogowanie
 					this.authenticationService.login(this.email, this.password).subscribe((value: any) => {
-						console.log('RegisterUserPage.register(): login ', value);
 						this.hideProcessing();
 						if (this.authenticationService.getUserToken() !== '') {
+							this.socketioService.emitLogin();
 							this.navCtrl.setRoot(HomePage);
 						}
 						else {

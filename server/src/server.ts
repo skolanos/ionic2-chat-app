@@ -18,10 +18,29 @@ app.use(bodyParser.urlencoded({ extended: false }));
 io.sockets.on('connection', (socket) => {
 	console.log('Użytkownik podłączył się do serwera');
 
-	socket.on('message', (data) => {
-		console.log('message: ' + JSON.stringify(data));
+	socket.on('login', (data) => {
+		console.log('Event(\'login\'): ' + JSON.stringify(data));
 
-		io.emit('message', data);
+		authenticationCtrl.authenticateRequest(data.token, (err, value) => {
+			if (err) {
+				console.log('Event(\'login\'): błąd autentykacji użytkownika');
+			}
+			else {
+				io.emit('login', { type: 'login', login: value.uz_login, text: 'zalogował się' });
+			}
+		});
+	});
+	socket.on('message', (data) => {
+		console.log('Event(\'message\'): ' + JSON.stringify(data));
+
+		authenticationCtrl.authenticateRequest(data.token, (err, value) => {
+			if (err) {
+				console.log('Event(\'message\'): błąd autentykacji użytkownika');
+			}
+			else {
+				io.emit('message', { type: 'message', login: value.uz_login, text: data.text });
+			}
+		});
 	});
 });
 
