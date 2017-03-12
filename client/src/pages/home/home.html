@@ -7,9 +7,47 @@
 </ion-header>
 
 <ion-content padding>
-	<ion-list>
-		<ion-item *ngFor="let message of messages">{{ message.login }} - {{ message.text }}</ion-item>
-	</ion-list>
-	<ion-input type="text" [(ngModel)]="message" placeholder="Wpisz wiadomość"></ion-input>
-	<button (click)="sendMessage()">Wyślij</button>
+
+	<ion-card *ngFor="let message of messages">
+		<div *ngIf="message.login === getUserLogin()">
+			<ion-item class="owner">
+				<ion-avatar item-left>
+					<img src="assets/images/avatar.png">
+				</ion-avatar>
+				<ion-card-title>{{ message.login }}</ion-card-title>
+				<ion-note item-right>{{ formatMessageTime(message.time) }}</ion-note>
+			</ion-item>
+			<ion-card-content class="owner">
+				<p>{{ message.text }}</p>
+			</ion-card-content>
+		</div>
+		<div *ngIf="message.login !== getUserLogin()">
+			<ion-item>
+				<ion-avatar item-left>
+					<img src="assets/images/avatar.png">
+				</ion-avatar>
+				<ion-card-title>{{ message.login }}</ion-card-title>
+				<ion-note item-right>{{ formatMessageTime(message.time) }}</ion-note>
+			</ion-item>
+			<ion-card-content>
+				<p>{{ message.text }}</p>
+			</ion-card-content>
+		</div>
+	</ion-card>
+
 </ion-content>
+
+<ion-footer>
+	<form (submit)="sendMessage()" #form="ngForm">
+		<ion-grid>
+			<ion-row>
+				<ion-col col-8>
+					<ion-input type="text" name="message" [(ngModel)]="message" placeholder="Wpisz wiadomość..." required></ion-input>
+				</ion-col>
+				<ion-col col-4>
+					<button ion-button type="submit" [disabled]="form.form.invalid">Wyślij</button>
+				</ion-col>
+			</ion-row>
+		</ion-grid>
+	</form>
+</ion-footer>

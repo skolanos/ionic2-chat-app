@@ -84,7 +84,7 @@ const dataModel = {
 							if (results.length === 1) {
 								let tokenData = { uz_id: results[0].uz_id, uz_login: results[0].uz_login };
 								let token = jwt.sign(tokenData, serverConfig.jsonwebtoken.secret, { expiresIn: 60 * 24 });
-								observer.next({ status: 0, message: 'Poprawnie zalogowano użytkownika.', data: { token: token }});
+								observer.next({ status: 0, message: 'Poprawnie zalogowano użytkownika.', data: { token: token, login: results[0].uz_login }});
 								observer.complete();
 							}
 							else {

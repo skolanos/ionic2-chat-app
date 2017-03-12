@@ -13,15 +13,20 @@ import { ConfigurationService } from './configuration-service';
 @Injectable()
 export class AuthenticationService {
 	private userToken: string;
+	private userLogin: string;
 
 	constructor(
 		public http: Http,
 		private configurationService: ConfigurationService
 	) {
 		this.userToken = '';
+		this.userLogin = '';
 	}
 	public getUserToken(): string {
 		return this.userToken;
+	}
+	public getUserLogin(): string {
+		return this.userLogin;
 	}
 	public login(email: string, password: string): Observable<Response> {
 		return this.http.post(this.configurationService.getServerUrl() + '/api/user-login', JSON.stringify({
@@ -33,6 +38,7 @@ export class AuthenticationService {
 			let value: any = response.json();
 			if (value.status === 0) {
 				this.userToken = value.data.token;
+				this.userLogin = value.data.login;
 			}
 
 			return value;

@@ -18,6 +18,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 io.sockets.on('connection', (socket) => {
 	console.log('Użytkownik podłączył się do serwera');
 
+	socket.on('disconnect', (socket) => {
+		console.log('Użytkownik odłączył się od serwera');
+	});
 	socket.on('login', (data) => {
 		console.log('Event(\'login\'): ' + JSON.stringify(data));
 
@@ -26,7 +29,7 @@ io.sockets.on('connection', (socket) => {
 				console.log('Event(\'login\'): błąd autentykacji użytkownika');
 			}
 			else {
-				io.emit('login', { type: 'login', login: value.uz_login, text: 'zalogował się' });
+				io.sockets.emit('login', { type: 'login', time: new Date(), login: value.uz_login, text: 'zalogował się' });
 			}
 		});
 	});
@@ -38,7 +41,7 @@ io.sockets.on('connection', (socket) => {
 				console.log('Event(\'message\'): błąd autentykacji użytkownika');
 			}
 			else {
-				io.emit('message', { type: 'message', login: value.uz_login, text: data.text });
+				io.sockets.emit('message', { type: 'message', time: new Date(), login: value.uz_login, text: data.text });
 			}
 		});
 	});
