@@ -3,7 +3,7 @@ import { NavController, NavParams, AlertController, LoadingController, Loading }
 
 import { AuthenticationService } from '../../providers/authentication-service';
 import { SocketioService } from '../../providers/socketio-service';
-import { HomePage } from '../home/home';
+import { TabsPage } from '../tabs/tabs';
 
 /*
   Generated class for the RegisterUser page.
@@ -58,7 +58,7 @@ export class RegisterUserPage {
 						this.hideProcessing();
 						if (this.authenticationService.getUserToken() !== '') {
 							this.socketioService.emitLogin();
-							this.navCtrl.setRoot(HomePage);
+							this.navCtrl.setRoot(TabsPage);
 						}
 						else {
 							this.showError(value.message);
@@ -78,6 +78,7 @@ export class RegisterUserPage {
 			});
 		}
 	}
+
 	private showProcessing(): void {
 		this.loading = this.loadingCtrl.create({
 			content: 'Proszę czekać...'

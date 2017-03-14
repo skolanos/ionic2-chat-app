@@ -5,6 +5,7 @@ import * as socketio from 'socket.io';
 
 import { serverConfig } from './server-config';
 import { authenticationCtrl } from './authentication-controller';
+import { contactsCtrl } from './contacts-controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -22,9 +23,7 @@ io.sockets.on('connection', (socket) => {
 		console.log('Użytkownik odłączył się od serwera');
 	});
 	socket.on('login', (data) => {
-		console.log('Event(\'login\'): ' + JSON.stringify(data));
-
-		authenticationCtrl.authenticateRequest(data.token, (err, value) => {
+		authenticationCtrl.authenticate(data.token, (err, value) => {
 			if (err) {
 				console.log('Event(\'login\'): błąd autentykacji użytkownika');
 			}
@@ -34,9 +33,7 @@ io.sockets.on('connection', (socket) => {
 		});
 	});
 	socket.on('message', (data) => {
-		console.log('Event(\'message\'): ' + JSON.stringify(data));
-
-		authenticationCtrl.authenticateRequest(data.token, (err, value) => {
+		authenticationCtrl.authenticate(data.token, (err, value) => {
 			if (err) {
 				console.log('Event(\'message\'): błąd autentykacji użytkownika');
 			}
@@ -50,7 +47,7 @@ io.sockets.on('connection', (socket) => {
 // CORS
 app.use((req, res, next) => {
 	res.header('Access-Control-Allow-Origin', '*');
-	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, X-Access-Token');
 	next();
 });
 
@@ -64,6 +61,19 @@ app.post('/api/user-login', (req, res) => {
 app.post('/api/user-register', (req, res) => {
 	authenticationCtrl.register(req).subscribe(value => {
 		res.json({ status: 0, message: 'Poprawnie zarejestrowano nowego użytkownika.' });
+	}, (error: Error) => {
+		res.json({ status: (-1), message: error.message });
+	});
+});
+app.post('/api/contacts-find-users', authenticationCtrl.authenticateRequest, (req, res) => {
+	contactsCtrl.findUsers(req).subscribe(value => {
+		let data = value.data.map((element: any) => {
+			return {
+				id: element.uz_id,
+				login: element.uz_login
+			};
+		});
+		res.json({ status: 0, message: 'Lista użytkowników.', data: data });
 	}, (error: Error) => {
 		res.json({ status: (-1), message: error.message });
 	});

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/map';
 
 import { ConfigurationService } from './configuration-service';
+
 /*
   Generated class for the AuthenticationService provider.
 

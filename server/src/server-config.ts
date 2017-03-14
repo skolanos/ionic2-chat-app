@@ -5,7 +5,13 @@ const serverConfig = {
 		port: process.env.PORT || 3000
 	},
 	database: {
-		connectionString: process.env.DATABASE_URL || 'pg://postgres:postgres@localhost:5432/chat-app?stringtype=unspecified'
+		host: 'localhost',
+		port: 5432,
+		database: 'chat-app',
+		user: 'postgres',
+		password: 'postgres',
+		max: 10, // maksymalna liczba połączeń do bazy danych
+		idleTimeoutMillis: 30000
 	},
 	jsonwebtoken: {
 		secret: 'ty4387th4387th'

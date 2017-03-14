@@ -6,6 +6,12 @@ import { Subscriber } from 'rxjs/Subscriber';
 
 import { serverConfig } from './server-config';
 
+const pool = new pg.Pool(serverConfig.database);
+
+pool.on('error', (err, client) => {
+	console.error('Wystąpił błąd przy pobieraniu połączenia do bazy danych!', err.message, err.stack)
+});
+
 const user = {
 	findByEmail: (client, data, callback): void => {
 		let results = [];
@@ -20,6 +26,16 @@ const user = {
 	findByLogin: (client, data, callback): void => {
 		let results = [];
 		let query = client.query('SELECT * FROM uzytkownicy WHERE (LOWER(uz_login)=LOWER($1))', [data.login]);
+		query.on('row', (row) => {
+			results.push(row);
+		});
+		query.on('end', () => {
+			callback(undefined, results);
+		});
+	},
+	findLikeLogin: (client, data, callback): void => {
+		let results = [];
+		let query = client.query('SELECT * FROM uzytkownicy WHERE (uz_id<>$1) AND (LOWER(uz_login) LIKE LOWER($2)) ORDER BY uz_login', [data.uz_id, `%${data.login}%`]);
 		query.on('row', (row) => {
 			results.push(row);
 		});
@@ -61,17 +77,17 @@ const user = {
 };
 
 const dataModel = {
-	userLogin: (data): Observable<any> => {
+	userLogin: (data: any): Observable<any> => {
 		return Observable.create((observer: Subscriber<any>) => {
-			pg.connect(serverConfig.database.connectionString, (err, client, done) => {
+			pool.connect((err, client, done) => {
 				if (err) {
-					done(err);
+					done();
 					observer.error(err);
 				}
 				else {
 					user.findByEmail(client, { email: data.email }, (err, value) => {
 						if (err) {
-							done(err);
+							done();
 							observer.error(err);
 						}
 						else {
@@ -96,18 +112,18 @@ const dataModel = {
 			});
 		});
 	},
-	userRegister: (data): Observable<any> => {
+	userRegister: (data: any): Observable<any> => {
 		return Observable.create((observer: Subscriber<any>) => {
-			pg.connect(serverConfig.database.connectionString, (err, client, done) => {
+			pool.connect((err, client, done) => {
 				if (err) {
-					done(err);
+					done();
 					observer.error(err);
 				}
 				else {
 					client.query('BEGIN', (err) => {
 						if (err) {
 							client.query('ROLLBACK', (error) => {
-								done(err);
+								done();
 								observer.error(err);
 							});
 						}
@@ -115,7 +131,7 @@ const dataModel = {
 							user.findByEmail(client, { email: data.email }, (err, value) => {
 								if (err) {
 									client.query('ROLLBACK', (error) => {
-										done(err);
+										done();
 										observer.error(err);
 									});
 								}
@@ -124,7 +140,7 @@ const dataModel = {
 										user.findByLogin(client, { login: data.login }, (err, value) => {
 											if (err) {
 												client.query('ROLLBACK', (error) => {
-													done(err);
+													done();
 													observer.error(err);
 												});
 											}
@@ -133,14 +149,14 @@ const dataModel = {
 													user.save(client, { login: data.login, email: data.email, password: data.password }, (err, value) => {
 														if (err) {
 															client.query('ROLLBACK', (error) => {
-																done(err);
+																done();
 																observer.error(err);
 															});
 														}
 														else {
 															client.query('COMMIT', (err, result) => {
 																if (err) {
-																	done(err);
+																	done();
 																	observer.error(err);
 																}
 																else {
@@ -154,7 +170,7 @@ const dataModel = {
 												}
 												else {
 													client.query('ROLLBACK', (error) => {
-														done(err);
+														done();
 														observer.error(new Error('Użytkownik o podanym loginie jest już zarejestrowany.'));
 													});
 												}
@@ -163,12 +179,34 @@ const dataModel = {
 									}
 									else {
 										client.query('ROLLBACK', (error) => {
-											done(err);
+											done();
 											observer.error(new Error('Użytkownik o podanym adresie e-mail jest już zarejestrowany.'));
 										});
 									}
 								}
 							});
+						}
+					});
+				}
+			});
+		});
+	},
+	findUsersByLogin: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect((err, client, done) => {
+				if (err) {
+					done();
+					observer.error(err);
+				}
+				else {
+					user.findLikeLogin(client, { uz_id: uz_id, login: data.login }, (err, value) => {
+						if (err) {
+							done();
+							observer.error(err);
+						}
+						else {
+							observer.next({ status: 0, message: 'Lista użytkowników.', data: value });
+							observer.complete();
 						}
 					});
 				}
