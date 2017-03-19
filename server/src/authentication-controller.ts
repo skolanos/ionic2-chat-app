@@ -22,10 +22,15 @@ const verifyToken = (token: string, callback): void => {
 };
 
 const authenticationCtrl = {
-	test: (data): Observable<any> => {
+	testOk: (data): Observable<any> => {
 		return Observable.create((observer: Subscriber<any>) => {
 			observer.next({ error: (-2), message: 'To jest test' });
 			observer.complete();
+		});
+	},
+	testError: (data): Observable<any> => {
+		return Observable.create(observer => {
+			observer.error(new Error('Przekazano nieprawidłowe parametry do funkcji.'));
 		});
 	},
 	authenticate: (token: string, callback): void => {
@@ -44,57 +49,18 @@ const authenticationCtrl = {
 			}
 		});
 	},
-	login: (req): Observable<any> => {
-		const validateParams = (req): boolean => {
-			if (!req.body.email || req.body.email === '') {
-				return false;
-			}
-			if (!req.body.password || req.body.password === '') {
-				return false;
-			}
-
-			return true;
-		};
-
-		if (validateParams(req)) {
-			return dataModel.userLogin({
-				email: req.body.email,
-				password: req.body.password
-			});
-		}
-		else {
-			return Observable.create(observer => {
-				observer.error(new Error('Przekazano nieprawidłowe parametry do funkcji.'));
-			});
-		}
+	login: (data: any): Observable<any> => {
+		return dataModel.userLogin({
+			email: data.email,
+			password: data.password
+		});
 	},
-	register: (req): Observable<any> => {
-		const validateParams = (req): boolean => {
-			if (!req.body.login || req.body.login === '') {
-				return false;
-			}
-			if (!req.body.email || req.body.email === '') {
-				return false;
-			}
-			if (!req.body.password || req.body.password === '') {
-				return false;
-			}
-
-			return true;
-		};
-
-		if (validateParams(req)) {
-			return dataModel.userRegister({
-				login: req.body.login,
-				email: req.body.email,
-				password: req.body.password
-			});
-		}
-		else {
-			return Observable.create(observer => {
-				observer.error(new Error('Przekazano nieprawidłowe parametry do funkcji.'));
-			});
-		}
+	register: (data: any): Observable<any> => {
+		return dataModel.userRegister({
+			login: data.login,
+			email: data.email,
+			password: data.password
+		});
 	}
 };
 

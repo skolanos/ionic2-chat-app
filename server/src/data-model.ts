@@ -33,9 +33,22 @@ const user = {
 			callback(undefined, results);
 		});
 	},
-	findLikeLogin: (client, data, callback): void => {
+	findNotInContacts: (client, data, callback): void => {
 		let results = [];
-		let query = client.query('SELECT * FROM uzytkownicy WHERE (uz_id<>$1) AND (LOWER(uz_login) LIKE LOWER($2)) ORDER BY uz_login', [data.uz_id, `%${data.login}%`]);
+		let query = client.query(`
+			SELECT *
+			FROM uzytkownicy
+			WHERE (uz_id<>$1)
+				AND (LOWER(uz_login) LIKE LOWER($2))
+				AND (uz_id NOT IN (
+					SELECT ko_uz_id_do
+					FROM kontakty
+					WHERE (ko_uz_id_od=$1)
+						AND (ko_status<>(-1))
+					GROUP BY ko_uz_id_do
+				))
+			ORDER BY uz_login
+		`, [data.uz_id, `%${data.login}%`]);
 		query.on('row', (row) => {
 			results.push(row);
 		});
@@ -72,6 +85,76 @@ const user = {
 					}
 				});
 			}
+		});
+	}
+};
+const contacts = {
+	find: (client, data, callback): void => {
+		let results = [];
+		let query = client.query('SELECT * FROM kontakty WHERE (ko_uz_id_od=$1) AND (ko_uz_id_do=$2)', [data.ko_uz_id_od, data.ko_uz_id_do]);
+		query.on('row', (row) => {
+			results.push(row);
+		});
+		query.on('end', () => {
+			callback(undefined, results);
+		});
+	},
+	save: (client, data, callback): void => {
+		let results = [];
+		client.query('INSERT INTO kontakty (ko_uz_id_start, ko_uz_id_od, ko_uz_id_do, ko_status) VALUES ($1, $2, $3, 2)', [data.ko_uz_id_start, data.ko_uz_id_od, data.ko_uz_id_do], (err) => {
+			if (err) {
+				callback(err, undefined);
+			}
+			else {
+				let query = client.query('SELECT currval(pg_get_serial_sequence(\'kontakty\', \'ko_id\')) AS id');
+				query.on('row', (row) => {
+					results.push(row);
+				});
+				query.on('end', () => {
+					callback(undefined, results);
+				})
+			}
+		});
+	},
+	updateStatus: (client, data, callback): void => {
+		let results = [];
+		client.query('UPDATE kontakty SET ko_status=$1 WHERE (ko_id=$2)', [data.ko_status, data.ko_id], (err) => {
+			if (err) {
+				callback(err, undefined);
+			}
+			else {
+				results.push({id: data.ko_id});
+			}
+		});
+	},
+	getNumWaitingInvitations: (client, data, callback): void => {
+		let results = [];
+		let query = client.query('SELECT COUNT(*) AS ile FROM kontakty WHERE (ko_uz_id_start<>$1) AND (ko_uz_id_od=$1) AND (ko_status=2)', [data.uz_id]);
+		query.on('row', (row) => {
+			results.push(row);
+		});
+		query.on('end', () => {
+			callback(undefined, results);
+		});
+	},
+	getList: (client, data, callback): void => {
+		let results = [];
+		let query = undefined;
+		if (data.type === 'active') {
+			query = client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_od=$1) AND (ko_status=1)', [data.uz_id]);
+		}
+		else if (data.type === 'send') {
+			query = client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_start=$1) AND (ko_uz_id_od=$1) AND (ko_status=2)', [data.uz_id]);
+		}
+		else if (data.type === 'received') {
+			query = client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_start<>$1) AND (ko_uz_id_od=$1) AND (ko_status=2)', [data.uz_id]);
+		}
+
+		query.on('row', (row) => {
+			results.push(row);
+		});
+		query.on('end', () => {
+			callback(undefined, results);
 		});
 	}
 };
@@ -191,7 +274,7 @@ const dataModel = {
 			});
 		});
 	},
-	findUsersByLogin: (uz_id: number, data: any): Observable<any> => {
+	findUsersNotInContacts: (uz_id: number, data: any): Observable<any> => {
 		return Observable.create((observer: Subscriber<any>) => {
 			pool.connect((err, client, done) => {
 				if (err) {
@@ -199,13 +282,152 @@ const dataModel = {
 					observer.error(err);
 				}
 				else {
-					user.findLikeLogin(client, { uz_id: uz_id, login: data.login }, (err, value) => {
+					user.findNotInContacts(client, { uz_id: uz_id, login: data.login }, (err, value) => {
 						if (err) {
 							done();
 							observer.error(err);
 						}
 						else {
 							observer.next({ status: 0, message: 'Lista użytkowników.', data: value });
+							observer.complete();
+						}
+					});
+				}
+			});
+		});
+	},
+	inviteUserToContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect((err, client, done) => {
+				if (err) {
+					done();
+					observer.error(err);
+				}
+				else {
+					client.query('BEGIN', (err) => {
+						if (err) {
+							client.query('ROLLBACK', (error) => {
+								done();
+								observer.error(err);
+							});
+						}
+						else {
+							contacts.find(client, { ko_uz_id_od: uz_id, ko_uz_id_do: data.userId }, (err, value) => {
+								if (err) {
+									client.query('ROLLBACK', (error) => {
+										done();
+										observer.error(err);
+									});
+								}
+								else {
+									// rejestracja związków w obie strony (uzytkownik1 -> użytkownik2, użytkownik2 -> użytkownik1)
+									if (value.length === 0) {
+										contacts.save(client, { ko_uz_id_start: uz_id, ko_uz_id_od: uz_id, ko_uz_id_do: data.userId }, (err, value) => {
+											if (err) {
+												client.query('ROLLBACK', (error) => {
+													done();
+													observer.error(err);
+												});
+											}
+											else {
+												contacts.save(client, { ko_uz_id_start: uz_id, ko_uz_id_od: data.userId, ko_uz_id_do: uz_id }, (err, value) => {
+													if (err) {
+														client.query('ROLLBACK', (error) => {
+															done();
+															observer.error(err);
+														});
+													}
+													else {
+														client.query('COMMIT', (err, result) => {
+															if (err) {
+																done();
+																observer.error(err);
+															}
+															else {
+																done();
+																observer.next({ status: 0, message: 'Poprawnie zaproszono nowego użytkownika do kontaktów.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
+																observer.complete();
+															}
+														});
+													}
+												});
+											}
+										});
+									}
+									else {
+										if (value[0].ko_status === (-1)) {
+											contacts.updateStatus(client, { ko_id: value[0].ko_id, ko_status: 2 }, (err, value) => {
+												if (err) {
+													client.query('ROLLBACK', (error) => {
+														done();
+														observer.error(err);
+													});
+												}
+												else {
+													client.query('COMMIT', (err, result) => {
+														if (err) {
+															done();
+															observer.error(err);
+														}
+														else {
+															done();
+															observer.next({ status: 0, message: 'Poprawnie odnowiono zaproszenie nowego użytkownika do kontaktów.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
+															observer.complete();
+														}
+													});
+												}
+											});
+										}
+										else {
+											observer.next({ status: 1, message: 'Użytkownik już jest w kontaktach.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
+											observer.complete();
+										}
+									}
+								}
+							});
+						}
+					});
+				}
+			});
+		});
+	},
+	getNumWaitingInvitations: (uz_id: number): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect((err, client, done) => {
+				if (err) {
+					done();
+					observer.error(err);
+				}
+				else {
+					contacts.getNumWaitingInvitations(client, { uz_id: uz_id }, (err, value) => {
+						if (err) {
+							done();
+							observer.error(err);
+						}
+						else {
+							observer.next({ status: 0, message: 'Poprawnie pobrano liczbę oczekujących zaproszeń do kontaktów.', data: value[0].ile });
+							observer.complete();
+						}
+					});
+				}
+			});
+		});
+	},
+	findContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect((err, client, done) => {
+				if (err) {
+					done();
+					observer.error(err);
+				}
+				else {
+					contacts.getList(client, { uz_id: uz_id, type: data.type }, (err, value) => {
+						if (err) {
+							done();
+							observer.error(err);
+						}
+						else {
+							observer.next({ status: 0, message: 'Lista kontaktów.', data: value });
 							observer.complete();
 						}
 					});
