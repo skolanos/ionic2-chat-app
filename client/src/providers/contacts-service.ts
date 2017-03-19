@@ -21,8 +21,17 @@ export class ContactsService {
 		private authenticationService: AuthenticationService
 	) {
 	}
-
-	public findUsers(login: string): Observable<Response> {
+	public getListOfContacts(type: string): Observable<Response> {
+		return this.http.post(this.configurationService.getServerUrl() + '/api/contacts-list', JSON.stringify({
+			type: type
+		}), {
+			headers: new Headers({
+				'Content-Type': 'application/json',
+				'x-access-token': this.authenticationService.getUserToken()
+			})
+		}).map((response: Response) => response.json());
+	}
+	public findUsersNotInContacts(login: string): Observable<Response> {
 		return this.http.post(this.configurationService.getServerUrl() + '/api/contacts-find-users', JSON.stringify({
 			login: login
 		}), {
@@ -32,5 +41,22 @@ export class ContactsService {
 			})
 		}).map((response: Response) => response.json());
 	}
-
+	public inviteUserToContacts(userId: number): Observable<Response> {
+		return this.http.post(this.configurationService.getServerUrl() + '/api/contacts-invite-users', JSON.stringify({
+			userId: userId
+		}), {
+			headers: new Headers({
+				'Content-Type': 'application/json',
+				'x-access-token': this.authenticationService.getUserToken()
+			})
+		}).map((response: Response) => response.json());
+	}
+	public getNumOfWaitingInvitations(): Observable<Response> {
+		return this.http.post(this.configurationService.getServerUrl() + '/api/contacts-num-waiting-invitations', '', {
+			headers: new Headers({
+				'Content-Type': 'application/json',
+				'x-access-token': this.authenticationService.getUserToken()
+			})
+		}).map((response: Response) => response.json());
+	}
 }

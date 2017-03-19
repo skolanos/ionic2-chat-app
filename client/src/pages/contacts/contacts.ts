@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { NavController, NavParams, AlertController, LoadingController, Loading } from 'ionic-angular';
 
 import { ContactsService } from '../../providers/contacts-service';
+import { ContactsAddPage } from '../contacts-add/contacts-add';
 /*
   Generated class for the Contacts page.
 
@@ -14,9 +15,11 @@ import { ContactsService } from '../../providers/contacts-service';
 })
 export class ContactsPage {
 	private loading: Loading;
-	private users: any;
+	private activeContacts: any[];
+	private sendContacts: any[];
+	private receivedContacts: any[];
 	// model
-	public login: string;
+	public contactsType: string;
 
 	constructor(
 		public navCtrl: NavController,
@@ -25,27 +28,77 @@ export class ContactsPage {
 		private loadingCtrl: LoadingController,
 		private contactsService: ContactsService
 	) {
-		this.users = [];
-		this.login = '';
+		this.contactsType = 'active'; // który segment ma być widoczny
+		this.activeContacts = [];
+		this.sendContacts = [];
+		this.receivedContacts = [];
 	}
 	ionViewDidLoad() {
-		this.findUser({});
+		this.showProcessing();
+		this.getActiveContacts();
+		this.getSendContacts();
+		this.getReceivedContacts();
+		this.hideProcessing();
 	}
-	public findUser(event: any): void {
+	public addContact(): void {
+		this.navCtrl.push(ContactsAddPage, {});
+	}
+	private getActiveContacts(): void {
 		//this.showProcessing();
-		this.contactsService.findUsers(this.login).subscribe((value: any) => {
+		this.contactsService.getListOfContacts('active').subscribe((value: any) => {
 			//this.hideProcessing();
 			if (value.status === 0) {
-				this.users = value.data;
+				this.activeContacts = value.data;
 			}
 			else {
 				this.showError(value.message);
 			}
 		}, error => {
-			//this.hideProcessing();
+			this.hideProcessing();
 			this.showError(error);
 		});
-
+	}
+	private getSendContacts(): void {
+		//this.showProcessing();
+		this.contactsService.getListOfContacts('send').subscribe((value: any) => {
+			//this.hideProcessing();
+			if (value.status === 0) {
+				this.sendContacts = value.data;
+			}
+			else {
+				this.showError(value.message);
+			}
+		}, error => {
+			this.hideProcessing();
+			this.showError(error);
+		});
+	}
+	private getReceivedContacts(): void {
+		//this.showProcessing();
+		this.contactsService.getListOfContacts('received').subscribe((value: any) => {
+			//this.hideProcessing();
+			if (value.status === 0) {
+				this.receivedContacts = value.data;
+			}
+			else {
+				this.showError(value.message);
+			}
+		}, error => {
+			this.hideProcessing();
+			this.showError(error);
+		});
+	}
+	public deleteSendContact(contact: any): void {
+		console.log('deleteSendContact(): TODO:'); // TODO:
+	}
+	public cancelReceivedContact(contact: any): void {
+		console.log('cancelReceivedContact(): TODO:'); // TODO:
+	}
+	public confirmReceivedContact(contact: any): void {
+		console.log('confirmReceivedContact(): TODO:'); // TODO:
+	}
+	public deleteActiveContact(contact: any): void {
+		console.log('deleteActiveContact(): TODO:'); // TODO:
 	}
 
 	private showProcessing(): void {

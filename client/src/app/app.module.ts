@@ -12,6 +12,7 @@ import { RegisterUserPage } from '../pages/register-user/register-user';
 import { TabsPage } from '../pages/tabs/tabs';
 import { HomePage } from '../pages/home/home';
 import { ContactsPage } from '../pages/contacts/contacts';
+import { ContactsAddPage } from '../pages/contacts-add/contacts-add';
 
 @NgModule({
 	declarations: [
@@ -20,7 +21,8 @@ import { ContactsPage } from '../pages/contacts/contacts';
 		HomePage,
 		LoginPage,
 		RegisterUserPage,
-		ContactsPage
+		ContactsPage,
+		ContactsAddPage
 	],
 	imports: [
 		IonicModule.forRoot(MyApp)
@@ -32,7 +34,8 @@ import { ContactsPage } from '../pages/contacts/contacts';
 		HomePage,
 		LoginPage,
 		RegisterUserPage,
-		ContactsPage
+		ContactsPage,
+		ContactsAddPage
 	],
 	providers: [
 		{provide: ErrorHandler, useClass: IonicErrorHandler},

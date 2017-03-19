@@ -6,38 +6,80 @@
 -->
 <ion-header>
 
-  <ion-navbar>
-    <ion-title>Dodawanie kontaktów</ion-title>
-  </ion-navbar>
+	<ion-navbar>
+		<ion-title>Kontakty</ion-title>
+	</ion-navbar>
+
+	<ion-toolbar no-border-top> 
+		<ion-segment [(ngModel)]="contactsType"> 
+			<ion-segment-button value="active">Aktywne</ion-segment-button> 
+			<ion-segment-button value="send">Wysłane</ion-segment-button> 
+			<ion-segment-button value="received">Otrzymane</ion-segment-button> 
+		</ion-segment> 
+		<ion-buttons end>
+			<button ion-button icon-only (click)="addContact()">
+				<ion-icon name="person-add"></ion-icon>
+			</button>
+		</ion-buttons>
+	</ion-toolbar> 
 
 </ion-header>
 
-
 <ion-content padding>
+	<div [ngSwitch]="contactsType"> 
+		<ion-list *ngSwitchCase="'active'"> 
+			<ion-item-sliding *ngFor="let contact of activeContacts">
+				<ion-item>
+					<ion-avatar item-left>
+						<img src="assets/images/avatar.png">
+					</ion-avatar>
+					<h2>{{ contact.login }}</h2>
+				</ion-item>
+				<ion-item-options side="right">
+					<button ion-button color="danger" (click)="deleteActiveContact(contact)">
+						<ion-icon name="share"></ion-icon>
+						Usuń
+					</button>
+				</ion-item-options>
+			</ion-item-sliding>
+		</ion-list>
 
-	<ion-grid>
-		<ion-row>
-			<ion-col>
-				<ion-searchbar [(ngModel)]="login" (ionInput)="findUser($event)" [debounce]="500"></ion-searchbar>
-			</ion-col>
-		</ion-row>
-	</ion-grid>
+		<ion-list *ngSwitchCase="'send'">
+			<ion-item-sliding *ngFor="let contact of sendContacts">
+				<ion-item>
+					<ion-avatar item-left>
+						<img src="assets/images/avatar.png">
+					</ion-avatar>
+					<h2>{{ contact.login }}</h2>
+				</ion-item>
+				<ion-item-options side="right">
+					<button ion-button color="danger" (click)="deleteSendContact(contact)">
+						<ion-icon name="share"></ion-icon>
+						Usuń
+					</button>
+				</ion-item-options>
+			</ion-item-sliding>
+		</ion-list>
 
-	<ion-list>
-		<ion-item-sliding *ngFor="let user of users">
-			<ion-item>
-				<ion-avatar item-left>
-					<img src="assets/images/avatar.png">
-				</ion-avatar>
-				<h2>{{ user.login }}</h2>
-			</ion-item>
-			<ion-item-options side="right">
-				<button ion-button color="primary">
-					<ion-icon name="share"></ion-icon>
-					Zaproś
-				</button>
-			</ion-item-options>
-		</ion-item-sliding>
-	</ion-list>
-
+		<ion-list *ngSwitchCase="'received'">
+			<ion-item-sliding *ngFor="let contact of receivedContacts">
+				<ion-item>
+					<ion-avatar item-left>
+						<img src="assets/images/avatar.png">
+					</ion-avatar>
+					<h2>{{ contact.login }}</h2>
+				</ion-item>
+				<ion-item-options side="right">
+					<button ion-button color="primary" (click)="confirmReceivedContact(contact)">
+						<ion-icon name="share"></ion-icon>
+						Przyjmij
+					</button>
+					<button ion-button color="danger" (click)="cancelReceivedContact(contact)">
+						<ion-icon name="share"></ion-icon>
+						Zrezygnuj
+					</button>
+				</ion-item-options>
+			</ion-item-sliding>
+		</ion-list>
+	</div>
 </ion-content>
