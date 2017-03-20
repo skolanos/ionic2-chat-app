@@ -89,7 +89,17 @@ const user = {
 	}
 };
 const contacts = {
-	find: (client, data, callback): void => {
+	findById: (client, data, callback): void => {
+		let results = [];
+		let query = client.query('SELECT * FROM kontakty WHERE (ko_id=$1)', [data.ko_id]);
+		query.on('row', (row) => {
+			results.push(row);
+		});
+		query.on('end', () => {
+			callback(undefined, results);
+		});
+	},
+	findByUsers: (client, data, callback): void => {
 		let results = [];
 		let query = client.query('SELECT * FROM kontakty WHERE (ko_uz_id_od=$1) AND (ko_uz_id_do=$2)', [data.ko_uz_id_od, data.ko_uz_id_do]);
 		query.on('row', (row) => {
@@ -124,6 +134,7 @@ const contacts = {
 			}
 			else {
 				results.push({id: data.ko_id});
+				callback(undefined, results);
 			}
 		});
 	},
@@ -205,10 +216,8 @@ const dataModel = {
 				else {
 					client.query('BEGIN', (err) => {
 						if (err) {
-							client.query('ROLLBACK', (error) => {
-								done();
-								observer.error(err);
-							});
+							done();
+							observer.error(err);
 						}
 						else {
 							user.findByEmail(client, { email: data.email }, (err, value) => {
@@ -306,13 +315,11 @@ const dataModel = {
 				else {
 					client.query('BEGIN', (err) => {
 						if (err) {
-							client.query('ROLLBACK', (error) => {
-								done();
-								observer.error(err);
-							});
+							done();
+							observer.error(err);
 						}
 						else {
-							contacts.find(client, { ko_uz_id_od: uz_id, ko_uz_id_do: data.userId }, (err, value) => {
+							contacts.findByUsers(client, { ko_uz_id_od: uz_id, ko_uz_id_do: data.userId }, (err, value) => {
 								if (err) {
 									client.query('ROLLBACK', (error) => {
 										done();
@@ -429,6 +436,184 @@ const dataModel = {
 						else {
 							observer.next({ status: 0, message: 'Lista kontaktów.', data: value });
 							observer.complete();
+						}
+					});
+				}
+			});
+		});
+	},
+	deleteUserFromContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect((err, client, done) => {
+				if (err) {
+					done();
+					observer.error(err);
+				}
+				else {
+					client.query('BEGIN', (err) => {
+						if (err) {
+							done();
+							observer.error(err);
+						}
+						else {
+							contacts.findById(client, { ko_id: data.contactId }, (err, value) => {
+								if (err) {
+									client.query('ROLLBACK', (error) => {
+										done();
+										observer.error(err);
+									});
+								}
+								else {
+									if (value.length === 1 && value[0].ko_uz_id_od === uz_id && value[0].ko_status !== (-1)) {
+										let firstContact = value[0];
+										contacts.findByUsers(client, { ko_uz_id_od: firstContact.ko_uz_id_do, ko_uz_id_do: firstContact.ko_uz_id_od }, (err, value) => {
+											if (err) {
+												client.query('ROLLBACK', (error) => {
+													done();
+													observer.error(err);
+												});
+											}
+											else {
+												if (value.length === 1 && value[0].ko_status !== (-1)) {
+													let secondContact = value[0];
+													contacts.updateStatus(client, { ko_id: firstContact.ko_id, ko_status: (-1)}, (err, value) => {
+														if (err) {
+															client.query('ROLLBACK', (error) => {
+																done();
+																observer.error(err);
+															});
+														}
+														else {
+															contacts.updateStatus(client, { ko_id: secondContact.ko_id, ko_status: (-1)}, (err, value) => {
+																if (err) {
+																	client.query('ROLLBACK', (error) => {
+																		done();
+																		observer.error(err);
+																	});
+																}
+																else {
+																	client.query('COMMIT', (err, result) => {
+																		if (err) {
+																			done();
+																			observer.error(err);
+																		}
+																		else {
+																			done();
+																			observer.next({ status: 0, message: 'Poprawnie usunięto kontakt.', data: {} });
+																			observer.complete();
+																		}
+																	});
+																}
+															});
+														}
+													});
+												}
+												else {
+													client.query('ROLLBACK', (error) => {
+														done();
+														observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
+													});
+												}
+											}
+										});
+									}
+									else {
+										client.query('ROLLBACK', (error) => {
+											done();
+											observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
+										});
+									}
+								}
+							});
+						}
+					});
+				}
+			});
+		});
+	},
+	confirmUsersInvToContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect((err, client, done) => {
+				if (err) {
+					done();
+					observer.error(err);
+				}
+				else {
+					client.query('BEGIN', (err) => {
+						if (err) {
+							done();
+							observer.error(err);
+						}
+						else {
+							contacts.findById(client, { ko_id: data.contactId }, (err, value) => {
+								if (err) {
+									client.query('ROLLBACK', (error) => {
+										done();
+										observer.error(err);
+									});
+								}
+								else {
+									if (value.length === 1 && value[0].ko_uz_id_od === uz_id && value[0].ko_status === 2) {
+										let firstContact = value[0];
+										contacts.findByUsers(client, { ko_uz_id_od: firstContact.ko_uz_id_do, ko_uz_id_do: firstContact.ko_uz_id_od }, (err, value) => {
+											if (err) {
+												client.query('ROLLBACK', (error) => {
+													done();
+													observer.error(err);
+												});
+											}
+											else {
+												if (value.length === 1 && value[0].ko_status === 2) {
+													let secondContact = value[0];
+													contacts.updateStatus(client, { ko_id: firstContact.ko_id, ko_status: 1}, (err, value) => {
+														if (err) {
+															client.query('ROLLBACK', (error) => {
+																done();
+																observer.error(err);
+															});
+														}
+														else {
+															contacts.updateStatus(client, { ko_id: secondContact.ko_id, ko_status: 1}, (err, value) => {
+																if (err) {
+																	client.query('ROLLBACK', (error) => {
+																		done();
+																		observer.error(err);
+																	});
+																}
+																else {
+																	client.query('COMMIT', (err, result) => {
+																		if (err) {
+																			done();
+																			observer.error(err);
+																		}
+																		else {
+																			done();
+																			observer.next({ status: 0, message: 'Poprawnie zaakceptowano kontakt.', data: {} });
+																			observer.complete();
+																		}
+																	});
+																}
+															});
+														}
+													});
+												}
+												else {
+													client.query('ROLLBACK', (error) => {
+														done();
+														observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
+													});
+												}
+											}
+										});
+									}
+									else {
+										client.query('ROLLBACK', (error) => {
+											done();
+											observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
+										});
+									}
+								}
+							});
 						}
 					});
 				}

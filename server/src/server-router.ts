@@ -1,5 +1,6 @@
 import * as express from 'express';
 
+import { stringTools } from './string-tools';
 import { authenticationCtrl } from './authentication-controller';
 import { contactsCtrl } from './contacts-controller';
 import { socketIoWraper } from './socket-io-wraper';
@@ -122,7 +123,7 @@ serverRouter.post('/contacts-list', authenticationCtrl.authenticateRequest, (req
  * @param req.body.login
  */
 serverRouter.post('/contacts-find-users', authenticationCtrl.authenticateRequest, (req, res) => {
-	contactsCtrl.findUsers(req).subscribe(value => {
+	contactsCtrl.findUsersNotInContacts(req).subscribe(value => {
 		let data = value.data.map((element: any) => {
 			return {
 				id: element.uz_id,
@@ -150,19 +151,110 @@ serverRouter.post('/contacts-num-waiting-invitations', authenticationCtrl.authen
  * @param req.body.userId
  */
 serverRouter.post('/contacts-invite-users', authenticationCtrl.authenticateRequest, (req, res) => {
-	contactsCtrl.inviteUser(req).subscribe(value => {
-		if (value.status === 0) {
-			// wysłanie powiadomienia do zaproszonego użytkownika
-			socketIoWraper.getAll().forEach(socket => {
-				if (socket['userId'] && socket['userId'] === Number(req.body.userId)) {
-					socket.emit('contact-invite', { type: 'contact-invite', time: new Date() });
-				}
-			});
+	const validateParams = (req): boolean => {
+		if (!req.body.userId || !stringTools.isValidInt(req.body.userId)) {
+			return false;
 		}
-		res.json({ status: 0, message: value.message, data: value.data });
-	}, (error: Error) => {
-		res.json({ status: (-1), message: error.message });
-	});
+
+		return true;
+	};
+
+	if (validateParams(req)) {
+		contactsCtrl.inviteUser(req).subscribe(value => {
+			if (value.status === 0) {
+				// wysłanie powiadomienia do zaproszonego użytkownika
+				socketIoWraper.getAll().forEach(socket => {
+					if (socket['userId'] && socket['userId'] === Number(req.body.userId)) {
+						socket.emit('contact-invite', { type: 'contact-invite', time: new Date() });
+					}
+				});
+			}
+			res.json({ status: 0, message: value.message, data: value.data });
+		}, (error: Error) => {
+			res.json({ status: (-1), message: error.message });
+		});
+	}
+	else {
+		res.json({ status: (-1), message: 'Przekazano nieprawidłowe parametry do funkcji.' });
+	}
+});
+/**
+ * Usunięcie użytkownika z kontaktów.
+ * 
+ * @param req.body.contactId
+ */
+serverRouter.post('/contacts-delete-users', authenticationCtrl.authenticateRequest, (req, res) => {
+	const validateParams = (req): boolean => {
+		if (!req.body.contactId || !stringTools.isValidInt(req.body.contactId)) {
+			return false;
+		}
+
+		return true;
+	};
+
+	if (validateParams(req)) {
+		contactsCtrl.deteleUser(req).subscribe(value => {
+			if (value.status === 0) {
+				// wysłanie powiadomienia do usuniętego użytkownika
+				socketIoWraper.getAll().forEach(socket => {
+					if (socket['userId'] && socket['userId'] === Number(req.body.userId)) {
+						socket.emit('contact-invite', { type: 'contact-invite', time: new Date() });
+					}
+				});
+				// wysłanie powiadomienia do użytkownika który usuwał
+				socketIoWraper.getAll().forEach(socket => {
+					if (socket['userId'] && socket['userId'] === Number(req['decoded'].uz_id)) {
+						socket.emit('contact-invite', { type: 'contact-invite', time: new Date() });
+					}
+				});
+			}
+			res.json({ status: 0, message: value.message, data: value.data });
+		}, (error: Error) => {
+			res.json({ status: (-1), message: error.message });
+		});
+	}
+	else {
+		res.json({ status: (-1), message: 'Przekazano nieprawidłowe parametry do funkcji.' });
+	}
+});
+/**
+ * Zaakceptowanie zaproszenia do kontaktów.
+ * 
+ * @param req.body.contactId
+ */
+serverRouter.post('/contacts-confirm-users', authenticationCtrl.authenticateRequest, (req, res) => {
+	const validateParams = (req): boolean => {
+		if (!req.body.contactId || !stringTools.isValidInt(req.body.contactId)) {
+			return false;
+		}
+
+		return true;
+	};
+
+	if (validateParams(req)) {
+		contactsCtrl.confirmUser(req).subscribe(value => {
+			if (value.status === 0) {
+				// wysłanie powiadomienia do użytkownika którego zaposzenie zaakceptowaliśmy
+				socketIoWraper.getAll().forEach(socket => {
+					if (socket['userId'] && socket['userId'] === Number(req.body.userId)) {
+						socket.emit('contact-invite', { type: 'contact-invite', time: new Date() });
+					}
+				});
+				// wysłanie powiadomienia do użytkownika który zaakceptował zaproszenie
+				socketIoWraper.getAll().forEach(socket => {
+					if (socket['userId'] && socket['userId'] === Number(req['decoded'].uz_id)) {
+						socket.emit('contact-invite', { type: 'contact-invite', time: new Date() });
+					}
+				});
+			}
+			res.json({ status: 0, message: value.message, data: value.data });
+		}, (error: Error) => {
+			res.json({ status: (-1), message: error.message });
+		});
+	}
+	else {
+		res.json({ status: (-1), message: 'Przekazano nieprawidłowe parametry do funkcji.' });
+	}
 });
 
 export { serverRouter }

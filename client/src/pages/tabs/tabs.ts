@@ -37,7 +37,6 @@ export class TabsPage {
 		this.numOfWaitingContacts = 0;
 
 		this.socketioService.getSocket().on('contact-invite', (data) => {
-			console.log('contact-invite', data);
 			this.getNumOfWaitingContacts();
 		});
 	}

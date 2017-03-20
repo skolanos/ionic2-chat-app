@@ -9,35 +9,29 @@ const contactsCtrl = {
 			type: req.body.type
 		});
 	},
-	findUsers: (req): Observable<any> => {
+	findUsersNotInContacts: (req): Observable<any> => {
 		return dataModel.findUsersNotInContacts(req.decoded.uz_id, {
 			login: req.body.login
 		});
 	},
 	inviteUser: (req): Observable<any> => {
-		const validateParams = (req): boolean => {
-			if (!req.body.userId || !stringTools.isValidInt(req.body.userId)) {
-				return false;
-			}
-
-			return true;
-		};
-
-		if (validateParams(req)) {
-			return dataModel.inviteUserToContacts(req.decoded.uz_id, {
-				userId: req.body.userId
-			});
-		}
-		else {
-			return Observable.create(observer => {
-				observer.error(new Error('Przekazano nieprawidłowe parametry do funkcji.'));
-			});
-		}
+		return dataModel.inviteUserToContacts(req.decoded.uz_id, {
+			userId: req.body.userId
+		});
 	},
 	getNumWaitingInvitations: (req): Observable<any> => {
 		return dataModel.getNumWaitingInvitations(req.decoded.uz_id);
+	},
+	deteleUser: (req): Observable<any> => {
+		return dataModel.deleteUserFromContacts(req.decoded.uz_id, {
+			contactId: req.body.contactId
+		});
+	},
+	confirmUser: (req): Observable<any> => {
+		return dataModel.confirmUsersInvToContacts(req.decoded.uz_id, {
+			contactId: req.body.contactId
+		});
 	}
-
 };
 
 export { contactsCtrl }

@@ -59,4 +59,24 @@ export class ContactsService {
 			})
 		}).map((response: Response) => response.json());
 	}
+	public deleteFromContacts(contactId: number): Observable<Response> {
+		return this.http.post(this.configurationService.getServerUrl() + '/api/contacts-delete-users', JSON.stringify({
+			contactId: contactId
+		}), {
+			headers: new Headers({
+				'Content-Type': 'application/json',
+				'x-access-token': this.authenticationService.getUserToken()
+			})
+		}).map((response: Response) => response.json());
+	}
+	public confirInvToContacts(contactId: number): Observable<Response> {
+		return this.http.post(this.configurationService.getServerUrl() + '/api/contacts-confirm-users', JSON.stringify({
+			contactId: contactId
+		}), {
+			headers: new Headers({
+				'Content-Type': 'application/json',
+				'x-access-token': this.authenticationService.getUserToken()
+			})
+		}).map((response: Response) => response.json());
+	}
 }

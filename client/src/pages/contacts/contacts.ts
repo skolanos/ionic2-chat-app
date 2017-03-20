@@ -88,17 +88,70 @@ export class ContactsPage {
 			this.showError(error);
 		});
 	}
-	public deleteSendContact(contact: any): void {
-		console.log('deleteSendContact(): TODO:'); // TODO:
+	public deleteActiveContact(contact: any): void {
+		this.showProcessing();
+		this.contactsService.deleteFromContacts(contact.contactId).subscribe((value: any) => {
+			if (value.status === 0) {
+				this.getActiveContacts();
+				this.hideProcessing();
+			}
+			else {
+				this.hideProcessing();
+				this.showError(value.message);
+			}
+		}, error => {
+			this.hideProcessing();
+			this.showError(error);
+		});
 	}
-	public cancelReceivedContact(contact: any): void {
-		console.log('cancelReceivedContact(): TODO:'); // TODO:
+	public deleteSendContact(contact: any): void {
+		this.showProcessing();
+		this.contactsService.deleteFromContacts(contact.contactId).subscribe((value: any) => {
+			if (value.status === 0) {
+				this.getSendContacts();
+				this.hideProcessing();
+			}
+			else {
+				this.hideProcessing();
+				this.showError(value.message);
+			}
+		}, error => {
+			this.hideProcessing();
+			this.showError(error);
+		});
+	}
+	public deleteReceivedContact(contact: any): void {
+		this.showProcessing();
+		this.contactsService.deleteFromContacts(contact.contactId).subscribe((value: any) => {
+			if (value.status === 0) {
+				this.getReceivedContacts();
+				this.hideProcessing();
+			}
+			else {
+				this.hideProcessing();
+				this.showError(value.message);
+			}
+		}, error => {
+			this.hideProcessing();
+			this.showError(error);
+		});
 	}
 	public confirmReceivedContact(contact: any): void {
-		console.log('confirmReceivedContact(): TODO:'); // TODO:
-	}
-	public deleteActiveContact(contact: any): void {
-		console.log('deleteActiveContact(): TODO:'); // TODO:
+		this.showProcessing();
+		this.contactsService.confirInvToContacts(contact.contactId).subscribe((value: any) => {
+			if (value.status === 0) {
+				this.getReceivedContacts();
+				this.getActiveContacts();
+				this.hideProcessing();
+			}
+			else {
+				this.hideProcessing();
+				this.showError(value.message);
+			}
+		}, error => {
+			this.hideProcessing();
+			this.showError(error);
+		});
 	}
 
 	private showProcessing(): void {

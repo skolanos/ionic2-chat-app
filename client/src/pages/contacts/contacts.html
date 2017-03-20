@@ -37,7 +37,7 @@
 				</ion-item>
 				<ion-item-options side="right">
 					<button ion-button color="danger" (click)="deleteActiveContact(contact)">
-						<ion-icon name="share"></ion-icon>
+						<ion-icon name="trash"></ion-icon>
 						Usuń
 					</button>
 				</ion-item-options>
@@ -54,7 +54,7 @@
 				</ion-item>
 				<ion-item-options side="right">
 					<button ion-button color="danger" (click)="deleteSendContact(contact)">
-						<ion-icon name="share"></ion-icon>
+						<ion-icon name="trash"></ion-icon>
 						Usuń
 					</button>
 				</ion-item-options>
@@ -71,12 +71,12 @@
 				</ion-item>
 				<ion-item-options side="right">
 					<button ion-button color="primary" (click)="confirmReceivedContact(contact)">
-						<ion-icon name="share"></ion-icon>
+						<ion-icon name="checkmark"></ion-icon>
 						Przyjmij
 					</button>
-					<button ion-button color="danger" (click)="cancelReceivedContact(contact)">
-						<ion-icon name="share"></ion-icon>
-						Zrezygnuj
+					<button ion-button color="danger" (click)="deleteReceivedContact(contact)">
+						<ion-icon name="trash"></ion-icon>
+						Usuń
 					</button>
 				</ion-item-options>
 			</ion-item-sliding>
