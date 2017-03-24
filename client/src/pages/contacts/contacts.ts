@@ -33,7 +33,7 @@ export class ContactsPage {
 		this.sendContacts = [];
 		this.receivedContacts = [];
 	}
-	ionViewDidLoad() {
+	ionViewDidEnter() {
 		this.showProcessing();
 		this.getActiveContacts();
 		this.getSendContacts();
