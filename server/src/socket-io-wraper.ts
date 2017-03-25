@@ -18,6 +18,18 @@ class SocketIoWraper {
 	public getAll(): SocketIO.Socket[] {
 		return this.sockets;
 	}
+	public findByUserId(userId: number): SocketIO.Socket {
+		let res: SocketIO.Socket = undefined;
+
+		for (let i = 0; i < this.sockets.length; i += 1) {
+			if (this.sockets[i]['userId'] === userId) {
+				res = this.sockets[i];
+				break;
+			}
+		}
+
+		return res;
+	}
 }
 
 const socketIoWraper = new SocketIoWraper();

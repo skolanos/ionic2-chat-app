@@ -2,7 +2,10 @@ import { Component } from '@angular/core';
 import { NavController, NavParams, AlertController, LoadingController, Loading } from 'ionic-angular';
 
 import { ContactsService } from '../../providers/contacts-service';
+
 import { ContactsAddPage } from '../contacts-add/contacts-add';
+import { ContactsChatPage } from '../contacts-chat/contacts-chat';
+
 /*
   Generated class for the Contacts page.
 
@@ -152,6 +155,9 @@ export class ContactsPage {
 			this.hideProcessing();
 			this.showError(error);
 		});
+	}
+	public chatWithContact(contact: any): void {
+		this.navCtrl.push(ContactsChatPage, { contact: contact });
 	}
 
 	private showProcessing(): void {

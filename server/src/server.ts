@@ -34,7 +34,7 @@ io.sockets.on('connection', (socket) => {
 			else {
 				// zapamiętanie identyfikatora użytkownika który się zalogował
 				socket['userId'] = value.uz_id;
-				//socketIoWraper.push(socket, { userId: value.uz_id });
+				socketIoWraper.push(socket);
 
 				io.sockets.emit('login', { type: 'login', time: new Date(), login: value.uz_login, text: 'zalogował się' });
 			}
@@ -47,6 +47,24 @@ io.sockets.on('connection', (socket) => {
 			}
 			else {
 				io.sockets.emit('message', { type: 'message', time: new Date(), login: value.uz_login, text: data.text });
+			}
+		});
+	});
+	socket.on('private-message', (data) => {
+		authenticationCtrl.authenticate(data.token, (err, value) => {
+			if (err) {
+				console.log('Event(\'private-message\'): błąd autentykacji użytkownika');
+			}
+			else {
+				let srcSocket: SocketIO.Socket = socketIoWraper.findByUserId(value.uz_id);
+				let destSocket: SocketIO.Socket = socketIoWraper.findByUserId(data.destUserId);
+				if (srcSocket && destSocket) {
+					srcSocket.emit('private-message', { type: 'message', time: new Date(), login: value.uz_login, text: data.text });
+					destSocket.emit('private-message', { type: 'message', time: new Date(), login: value.uz_login, text: data.text });
+				}
+				else {
+					console.log('Event(\'private-message\'): obecnie brak obsługi dla użytkownika który nie jest zalogowany');
+				}
 			}
 		});
 	});

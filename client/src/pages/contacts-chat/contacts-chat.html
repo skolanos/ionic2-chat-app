@@ -1,0 +1,59 @@
+<!--
+  Generated template for the ContactsChat page.
+
+  See http://ionicframework.com/docs/v2/components/#navigation for more info on
+  Ionic pages and navigation.
+-->
+<ion-header>
+
+	<ion-navbar>
+		<ion-title>Prywatna rozmowa z {{ contact.login }}</ion-title>
+	</ion-navbar>
+
+</ion-header>
+
+<ion-content padding>
+
+	<ion-card *ngFor="let message of messages">
+		<div *ngIf="message.login === getUserLogin()">
+			<ion-item class="owner">
+				<ion-avatar item-left>
+					<img src="assets/images/avatar.png">
+				</ion-avatar>
+				<ion-card-title>{{ message.login }}</ion-card-title>
+				<ion-note item-right>{{ formatMessageTime(message.time) }}</ion-note>
+			</ion-item>
+			<ion-card-content class="owner">
+				<p>{{ message.text }}</p>
+			</ion-card-content>
+		</div>
+		<div *ngIf="message.login !== getUserLogin()">
+			<ion-item>
+				<ion-avatar item-left>
+					<img src="assets/images/avatar.png">
+				</ion-avatar>
+				<ion-card-title>{{ message.login }}</ion-card-title>
+				<ion-note item-right>{{ formatMessageTime(message.time) }}</ion-note>
+			</ion-item>
+			<ion-card-content>
+				<p>{{ message.text }}</p>
+			</ion-card-content>
+		</div>
+	</ion-card>
+
+</ion-content>
+
+<ion-footer>
+	<form (submit)="sendMessage()" #form="ngForm">
+		<ion-grid>
+			<ion-row>
+				<ion-col col-8>
+					<ion-input type="text" name="message" [(ngModel)]="message" placeholder="Wpisz wiadomość..." required></ion-input>
+				</ion-col>
+				<ion-col col-4>
+					<button ion-button type="submit" [disabled]="form.form.invalid">Wyślij</button>
+				</ion-col>
+			</ion-row>
+		</ion-grid>
+	</form>
+</ion-footer>

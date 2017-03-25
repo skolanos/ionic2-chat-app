@@ -13,6 +13,7 @@ import { TabsPage } from '../pages/tabs/tabs';
 import { HomePage } from '../pages/home/home';
 import { ContactsPage } from '../pages/contacts/contacts';
 import { ContactsAddPage } from '../pages/contacts-add/contacts-add';
+import { ContactsChatPage } from '../pages/contacts-chat/contacts-chat';
 
 @NgModule({
 	declarations: [
@@ -22,12 +23,15 @@ import { ContactsAddPage } from '../pages/contacts-add/contacts-add';
 		LoginPage,
 		RegisterUserPage,
 		ContactsPage,
-		ContactsAddPage
+		ContactsAddPage,
+		ContactsChatPage
 	],
 	imports: [
 		IonicModule.forRoot(MyApp)
 	],
-	bootstrap: [IonicApp],
+	bootstrap: [
+		IonicApp
+	],
 	entryComponents: [
 		MyApp,
 		TabsPage,
@@ -35,7 +39,8 @@ import { ContactsAddPage } from '../pages/contacts-add/contacts-add';
 		LoginPage,
 		RegisterUserPage,
 		ContactsPage,
-		ContactsAddPage
+		ContactsAddPage,
+		ContactsChatPage
 	],
 	providers: [
 		{provide: ErrorHandler, useClass: IonicErrorHandler},

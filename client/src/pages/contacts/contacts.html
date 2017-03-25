@@ -29,7 +29,7 @@
 	<div [ngSwitch]="contactsType"> 
 		<ion-list *ngSwitchCase="'active'"> 
 			<ion-item-sliding *ngFor="let contact of activeContacts">
-				<ion-item>
+				<ion-item (click)="chatWithContact(contact)">
 					<ion-avatar item-left>
 						<img src="assets/images/avatar.png">
 					</ion-avatar>

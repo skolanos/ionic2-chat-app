@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Http } from '@angular/http';
+import { Observable } from 'rxjs/Observable';
+import { Subscriber } from 'rxjs/Subscriber';
 import 'rxjs/add/operator/map';
 
 import { ConfigurationService } from './configuration-service';
@@ -27,13 +29,21 @@ export class SocketioService {
 	public getSocket(): any {
 		return this.socket;
 	}
-	private emit(event_type: string, message: string): void {
-		this.socket.emit(event_type, { token: this.authenticationService.getUserToken(), text: message });
-	}
-	public emitMessage(message: string): void {
-		this.emit('message', message);
+	public on(event_name: string): Observable<any> {
+		return Observable.create((observer: Subscriber<any>) => {
+			this.socket.on(event_name, (data) => {
+				observer.next(data);
+				observer.complete();
+			});
+		});
 	}
 	public emitLogin(): void {
-		this.emit('login', undefined);
+		this.socket.emit('login', { token: this.authenticationService.getUserToken(), text: '' });
+	}
+	public emitMessage(message: string): void {
+		this.socket.emit('message', { token: this.authenticationService.getUserToken(), text: message });
+	}
+	public emitPrivateMessage(userId: number, message: string): void {
+		this.socket.emit('private-message', { token: this.authenticationService.getUserToken(), text: message, destUserId: userId });
 	}
 }
