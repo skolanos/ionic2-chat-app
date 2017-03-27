@@ -6,6 +6,7 @@ import * as socketio from 'socket.io';
 import { serverConfig } from './server-config';
 import { serverRouter } from './server-router';
 import { authenticationCtrl } from './authentication-controller';
+import { chatCtrl } from './chat-controller';
 import { socketIoWraper } from './socket-io-wraper';
 
 const app = express();
@@ -51,22 +52,31 @@ io.sockets.on('connection', (socket) => {
 		});
 	});
 	socket.on('private-message', (data) => {
+/*
 		authenticationCtrl.authenticate(data.token, (err, value) => {
 			if (err) {
 				console.log('Event(\'private-message\'): błąd autentykacji użytkownika');
 			}
 			else {
-				let srcSocket: SocketIO.Socket = socketIoWraper.findByUserId(value.uz_id);
-				let destSocket: SocketIO.Socket = socketIoWraper.findByUserId(data.destUserId);
-				if (srcSocket && destSocket) {
-					srcSocket.emit('private-message', { type: 'message', time: new Date(), login: value.uz_login, text: data.text });
-					destSocket.emit('private-message', { type: 'message', time: new Date(), login: value.uz_login, text: data.text });
-				}
-				else {
-					console.log('Event(\'private-message\'): obecnie brak obsługi dla użytkownika który nie jest zalogowany');
-				}
+				let token: any = value;
+console.log('przed zapisaniem wiadomości');
+				chatCtrl.saveMessage({ type: 'private-message', srcUserId: token.uz_id, destUserId: data.destUserId, message: data.text }).subscribe(value => {
+console.log('po zapisaniu wiadomości: ' + JSON.stringify(value));
+					let srcSocket: SocketIO.Socket = socketIoWraper.findByUserId(token.uz_id);
+					let destSocket: SocketIO.Socket = socketIoWraper.findByUserId(data.destUserId);
+					if (srcSocket && destSocket) {
+						srcSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
+						destSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
+					}
+					else {
+						console.log('Event(\'private-message\'): obecnie brak obsługi dla użytkownika który nie jest zalogowany');
+					}
+				}, error => {
+					console.log('Event(\'private-message\'): wystąpił błąd ' + error);
+				});
 			}
 		});
+*/
 	});
 });
 

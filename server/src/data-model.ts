@@ -12,111 +12,23 @@ pool.on('error', (err, client) => {
 	console.error('Wystąpił błąd przy pobieraniu połączenia do bazy danych!', err.message, err.stack)
 });
 
-const user = {
-	findByEmail: (client, data, callback): void => {
-		let results = [];
-		let query = client.query('SELECT * FROM uzytkownicy WHERE (LOWER(uz_email)=LOWER($1))', [data.email]);
-		query.on('row', (row) => {
-			results.push(row);
-		});
-		query.on('end', () => {
-			callback(undefined, results);
-		});
-	},
-	findByLogin: (client, data, callback): void => {
-		let results = [];
-		let query = client.query('SELECT * FROM uzytkownicy WHERE (LOWER(uz_login)=LOWER($1))', [data.login]);
-		query.on('row', (row) => {
-			results.push(row);
-		});
-		query.on('end', () => {
-			callback(undefined, results);
-		});
-	},
-	findNotInContacts: (client, data, callback): void => {
-		let results = [];
-		let query = client.query(`
-			SELECT *
-			FROM uzytkownicy
-			WHERE (uz_id<>$1)
-				AND (LOWER(uz_login) LIKE LOWER($2))
-				AND (uz_id NOT IN (
-					SELECT ko_uz_id_do
-					FROM kontakty
-					WHERE (ko_uz_id_od=$1)
-						AND (ko_status<>(-1))
-					GROUP BY ko_uz_id_do
-				))
-			ORDER BY uz_login
-		`, [data.uz_id, `%${data.login}%`]);
-		query.on('row', (row) => {
-			results.push(row);
-		});
-		query.on('end', () => {
-			callback(undefined, results);
-		});
-	},
+const messages = {
+/*
+	wi_id       serial NOT NULL,
+	wi_data     timestamp DEFAULT current_timestamp,
+	wi_wt_id    integer REFERENCES wiadomosci_typy,
+	wi_uz_id_od integer REFERENCES uzytkownicy, -- kto wysłał wiadomość
+	wi_uz_id_do integer REFERENCES uzytkownicy, -- do kogo wysłano wiadomość
+	wi_tresc    text,
+*/
 	save: (client, data, callback): void => {
 		let results = [];
-		bcrypt.genSalt(10, (err, salt) => {
+		client.query('INSERT INTO wiadomosci (wi_wt_id, wi_uz_id_od, wi_uz_id_do, wi_tresc) VALUES ($1, $2, $3, $4)', [data.type, data.srcUserId, data.destUserId, data.message], (err) => {
 			if (err) {
 				callback(err, undefined);
 			}
 			else {
-				bcrypt.hash(data.password, salt, (err, hash) => {
-					if (err) {
-						callback(err, undefined);
-					}
-					else {
-						client.query('INSERT INTO uzytkownicy (uz_haslo, uz_login, uz_email) VALUES ($1, $2, $3)', [hash, data.login, data.email], (err) => {
-							if (err) {
-								callback(err, undefined);
-							}
-							else {
-								let query = client.query('SELECT currval(pg_get_serial_sequence(\'uzytkownicy\', \'uz_id\')) AS id');
-								query.on('row', (row) => {
-									results.push(row);
-								});
-								query.on('end', () => {
-									callback(undefined, results);
-								})
-							}
-						});
-					}
-				});
-			}
-		});
-	}
-};
-const contacts = {
-	findById: (client, data, callback): void => {
-		let results = [];
-		let query = client.query('SELECT * FROM kontakty WHERE (ko_id=$1)', [data.ko_id]);
-		query.on('row', (row) => {
-			results.push(row);
-		});
-		query.on('end', () => {
-			callback(undefined, results);
-		});
-	},
-	findByUsers: (client, data, callback): void => {
-		let results = [];
-		let query = client.query('SELECT * FROM kontakty WHERE (ko_uz_id_od=$1) AND (ko_uz_id_do=$2)', [data.ko_uz_id_od, data.ko_uz_id_do]);
-		query.on('row', (row) => {
-			results.push(row);
-		});
-		query.on('end', () => {
-			callback(undefined, results);
-		});
-	},
-	save: (client, data, callback): void => {
-		let results = [];
-		client.query('INSERT INTO kontakty (ko_uz_id_start, ko_uz_id_od, ko_uz_id_do, ko_status) VALUES ($1, $2, $3, 2)', [data.ko_uz_id_start, data.ko_uz_id_od, data.ko_uz_id_do], (err) => {
-			if (err) {
-				callback(err, undefined);
-			}
-			else {
-				let query = client.query('SELECT currval(pg_get_serial_sequence(\'kontakty\', \'ko_id\')) AS id');
+				let query = client.query('SELECT currval(pg_get_serial_sequence(\'wiadomosci\', \'wi_id\')) AS id');
 				query.on('row', (row) => {
 					results.push(row);
 				});
@@ -126,21 +38,9 @@ const contacts = {
 			}
 		});
 	},
-	updateStatus: (client, data, callback): void => {
+	findById: (client, data, callback): void => {
 		let results = [];
-		client.query('UPDATE kontakty SET ko_status=$1 WHERE (ko_id=$2)', [data.ko_status, data.ko_id], (err) => {
-			if (err) {
-				callback(err, undefined);
-			}
-			else {
-				results.push({id: data.ko_id});
-				callback(undefined, results);
-			}
-		});
-	},
-	getNumWaitingInvitations: (client, data, callback): void => {
-		let results = [];
-		let query = client.query('SELECT COUNT(*) AS ile FROM kontakty WHERE (ko_uz_id_start<>$1) AND (ko_uz_id_od=$1) AND (ko_status=2)', [data.uz_id]);
+		let query = client.query('SELECT * FROM wiadomosci WHERE (wi_id=$1)', [data.wi_id]);
 		query.on('row', (row) => {
 			results.push(row);
 		});
@@ -148,65 +48,414 @@ const contacts = {
 			callback(undefined, results);
 		});
 	},
-	getList: (client, data, callback): void => {
-		let results = [];
-		let query = undefined;
-		if (data.type === 'active') {
-			query = client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_od=$1) AND (ko_status=1)', [data.uz_id]);
-		}
-		else if (data.type === 'send') {
-			query = client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_start=$1) AND (ko_uz_id_od=$1) AND (ko_status=2)', [data.uz_id]);
-		}
-		else if (data.type === 'received') {
-			query = client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_start<>$1) AND (ko_uz_id_od=$1) AND (ko_status=2)', [data.uz_id]);
-		}
+};
+// -----------------------------------------------------------------------------
+const kontaktyStatusy = {
+	usuniety: (-1),
+	aktywny: 1,
+	oczekujacy: 2
+};
 
-		query.on('row', (row) => {
-			results.push(row);
+/**
+ * Obiekt odpowiedzialny za logowanie i rejestrowanie nowych użytkowników.
+ */
+const dataModelUsers = {
+	/**
+	 * Logowanie użytkownika.
+	 * 
+	 * @param data.email
+	 * @param data.password
+	 */
+	userLogin: (data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('SELECT * FROM uzytkownicy WHERE (LOWER(uz_email)=LOWER($1))', [data.email]).then(result => {
+					let results = [];
+					result.rows.forEach(row => {
+						if (bcrypt.compareSync(data.password, row.uz_haslo)) {
+							results.push(row);
+						}
+					});
+					if (results.length === 1) {
+						let tokenData = { uz_id: results[0].uz_id, uz_login: results[0].uz_login };
+						let token = jwt.sign(tokenData, serverConfig.jsonwebtoken.secret, { expiresIn: 60 * 24 });
+						client.release();
+						observer.next({ status: 0, message: 'Poprawnie zalogowano użytkownika.', data: { token: token, login: results[0].uz_login }});
+						observer.complete();
+					}
+					else {
+						client.release();
+						observer.error(new Error('Nieprawidłowy adres e-mail albo hasło użytkownika.'));
+					}
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
 		});
-		query.on('end', () => {
-			callback(undefined, results);
+	},
+	/**
+	 * Zarejestrowanie nowego użytkownika.
+	 * 
+	 * @param data.email
+	 * @param data.login
+	 * @param data.password
+	 */
+	userRegister: (data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('BEGIN').then(result => {
+					return client.query('SELECT COUNT(*) AS ile FROM uzytkownicy WHERE (LOWER(uz_email)=LOWER($1))', [data.email]).then(result => {
+						if (result.rows && Number(result.rows[0].ile) === 0) {
+							return client.query('SELECT COUNT(*) AS ile FROM uzytkownicy WHERE (LOWER(uz_login)=LOWER($1))', [data.login]).then(result => {
+								if (result.rows && Number(result.rows[0].ile) === 0) {
+									return new Promise((resolve, reject) => {
+										bcrypt.genSalt(10, (err, salt) => {
+											if (err) {
+												reject(err);
+											}
+											else {
+												bcrypt.hash(data.password, salt, (err, hash) => {
+													if (err) {
+														reject(err);
+													}
+													else {
+														resolve(hash);
+													}
+												});
+											}
+										});
+									}).then(hash => {
+										return client.query('INSERT INTO uzytkownicy (uz_haslo, uz_login, uz_email) VALUES ($1, $2, $3)', [hash, data.login, data.email]).then(result => {
+											return client.query('COMMIT').then(result => {
+												client.release();
+												observer.next({ status: 0, message: 'Poprawnie zarejestrowano nowego użytkownika.' });
+												observer.complete();
+											});
+										});
+									});
+								}
+								else {
+									return Promise.reject(new Error('Użytkownik o podanym loginie jest już zarejestrowany.'));
+								}
+							});
+						}
+						else {
+							return Promise.reject(new Error('Użytkownik o podanym adresie e-mail jest już zarejestrowany.'));
+						}
+					});
+				}).catch(error => {
+					client.query('ROLLBACK').then(result => {
+						client.release();
+						observer.error(error);
+					});
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	}
+};
+
+/**
+ * Obiekt odpowiedzialny za zarządzanie listą kontaktów.
+ */
+const dataModelContacts = {
+	/**
+	 * Zwraca listę użytkowników którzy nie znajdują się na liście kontaktów
+	 * użytkownika (niezależnie od statusu).
+	 * 
+	 * @param uz_id {number} identyfikator użytkownika
+	 * @param data.login {string} napis do filtrowania listy użytkowników
+	 * 
+	 * Jest to lista osób które można zaprosić do kontaktów.
+	 */
+	findUsersNotInContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query(`
+					SELECT *
+					FROM uzytkownicy
+					WHERE (uz_id<>$1)
+						AND (LOWER(uz_login) LIKE LOWER($2))
+						AND (uz_id NOT IN (
+							SELECT ko_uz_id_do
+							FROM kontakty
+							WHERE (ko_uz_id_od=$1)
+								AND (ko_ks_id<>(-1))
+							GROUP BY ko_uz_id_do
+						))
+					ORDER BY uz_login
+				`, [uz_id, `%${data.login}%`]).then(result => {
+					client.release();
+					observer.next({ status: 0, message: 'Lista użytkowników.', data: result.rows });
+					observer.complete();
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	},
+	/**
+	 * Zarejestrowanie zaproszenia do kontaktów.
+	 * 
+	 * @param uz_id {number} identyfikator użytkownika (użytkownik zapraszający do kontaktów)
+	 * @param data.userId {nuumber} identyfikator użytkownika (użytkownik zapraszany do kontaktów)
+	 */
+	inviteUserToContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('BEGIN').then(result => {
+					return client.query('SELECT * FROM kontakty WHERE (ko_uz_id_od=$1) AND (ko_uz_id_do=$2)', [uz_id, data.userId]).then(result => {
+						if (result.rows.length === 0) {
+							// związku jeszcze nie było - rejestracja związków w obie strony (uzytkownik1 -> użytkownik2, użytkownik2 -> użytkownik1)
+							return client.query('INSERT INTO kontakty (ko_uz_id_start, ko_uz_id_od, ko_uz_id_do, ko_ks_id) VALUES ($1, $2, $3, 2)', [uz_id, uz_id, data.userId]).then(result => {
+								return client.query('INSERT INTO kontakty (ko_uz_id_start, ko_uz_id_od, ko_uz_id_do, ko_ks_id) VALUES ($1, $2, $3, 2)', [uz_id, data.userId, uz_id]).then(result => {
+									return client.query('COMMIT').then(result => {
+										client.release();
+										observer.next({ status: 0, message: 'Poprawnie zaproszono nowego użytkownika do kontaktów.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
+										observer.complete();
+									});
+								});
+							});
+						}
+						else {
+							// związek już był - aktualizacja związków w obie strony (uzytkownik1 -> użytkownik2, użytkownik2 -> użytkownik1)
+							if (Number(result.rows[0].ko_ks_id) === kontaktyStatusy.usuniety) {
+								return client.query('UPDATE kontakty SET ko_uz_id_start=$1, ko_ks_id=$2 WHERE (ko_uz_id_od=$3) AND (ko_uz_id_do=$4)', [uz_id, kontaktyStatusy.oczekujacy, uz_id, data.userId]).then(result => {
+									return client.query('UPDATE kontakty SET ko_uz_id_start=$1, ko_ks_id=$2 WHERE (ko_uz_id_od=$3) AND (ko_uz_id_do=$4)', [uz_id, kontaktyStatusy.oczekujacy, data.userId, uz_id]).then(result => {
+										return client.query('COMMIT').then(result => {
+											client.release();
+											observer.next({ status: 0, message: 'Poprawnie zaproszono nowego użytkownika do kontaktów.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
+											observer.complete();
+										});
+									});
+								});
+							}
+							else {
+								client.release();
+								observer.next({ status: 0, message: 'Kontakt jest już zarejestrowany.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
+								observer.complete();
+							}
+						}
+					});
+				}).catch(error => {
+					client.query('ROLLBACK').then(result => {
+						client.release();
+						observer.error(error);
+					});
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	},
+	/**
+	 * Zwraca liczbę kontaktów oczekujących na zatwierdzenie przez użytkownika.
+	 * 
+	 * @param uz_id
+	 * 
+	 * Do pokazania liczby na ikonce kontaktów.
+	 */
+	getNumWaitingInvitations: (uz_id: number): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('SELECT COUNT(*) AS ile FROM kontakty WHERE (ko_uz_id_start<>$1) AND (ko_uz_id_od=$1) AND (ko_ks_id=$2)', [uz_id, kontaktyStatusy.oczekujacy]).then(result => {
+					client.release();
+					observer.next({ status: 0, message: 'Poprawnie pobrano liczbę oczekujących zaproszeń do kontaktów.', data: result.rows[0].ile });
+					observer.complete();
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	},
+	/**
+	 * Zwraca listę kontaktów.
+	 * 
+	 * @param data.type {string} typ listy (active, send, received)
+	 */
+	findContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				if (data.type === 'active') {
+					return client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_od=$1) AND (ko_ks_id=$2) ORDER BY uz_login', [uz_id, kontaktyStatusy.aktywny]).then(result => {
+						client.release();
+						observer.next({ status: 0, message: 'Lista kontaktów.', data: result.rows });
+						observer.complete();
+					});
+				}
+				else if (data.type === 'send') {
+					return client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_start=$1) AND (ko_uz_id_od=$1) AND (ko_ks_id=$2) ORDER BY uz_login', [uz_id, kontaktyStatusy.oczekujacy]).then(result => {
+						client.release();
+						observer.next({ status: 0, message: 'Lista kontaktów.', data: result.rows });
+						observer.complete();
+					});
+				}
+				else if (data.type === 'received') {
+					return client.query('SELECT * FROM kontakty JOIN uzytkownicy ON (ko_uz_id_do=uz_id) WHERE (ko_uz_id_start<>$1) AND (ko_uz_id_od=$1) AND (ko_ks_id=$2) ORDER BY uz_login', [uz_id, kontaktyStatusy.oczekujacy]).then(result => {
+						client.release();
+						observer.next({ status: 0, message: 'Lista kontaktów.', data: result.rows });
+						observer.complete();
+					});
+				}
+				else {
+					observer.error(new Error('Nieprawidłowy typ listy.'));
+				}
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	},
+	/**
+	 * Usunięcie kontaktu.
+	 * 
+	 * @param uz_id
+	 * @param data.contactId
+	 */
+	deleteUserFromContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('BEGIN').then(result => {
+					return client.query('SELECT * FROM kontakty WHERE (ko_id=$1)', [data.contactId]).then(result => {
+						if (result.rows.length === 1 && Number(result.rows[0].ko_uz_id_od) === uz_id && Number(result.rows[0].ko_ks_id) !== kontaktyStatusy.usuniety) {
+							let firstContact = result.rows[0];
+							return client.query('SELECT * FROM kontakty WHERE (ko_uz_id_od=$1) AND (ko_uz_id_do=$2)', [firstContact.ko_uz_id_do, firstContact.ko_uz_id_od]).then(result => {
+								if (result.rows.length === 1 && Number(result.rows[0].ko_ks_id) !== kontaktyStatusy.usuniety) {
+									let secondContact = result.rows[0];
+									return client.query('UPDATE kontakty SET ko_ks_id=$1 WHERE (ko_id=$2)', [kontaktyStatusy.usuniety, firstContact.ko_id]).then(result => {
+										return client.query('UPDATE kontakty SET ko_ks_id=$1 WHERE (ko_id=$2)', [kontaktyStatusy.usuniety, secondContact.ko_id]).then(result => {
+											return client.query('COMMIT').then(result => {
+												client.release();
+												observer.next({ status: 0, message: 'Poprawnie usunięto kontakt.', data: {} });
+												observer.complete();
+											});
+										});
+									});
+								}
+								else {
+									return Promise.reject(new Error('Nieprawidłowy identyfikator kontaktu (2).'));
+								}
+							});
+						}
+						else {
+							return Promise.reject(new Error('Nieprawidłowy identyfikator kontaktu (1).'));
+						}
+					});
+				}).catch(error => {
+					client.query('ROLLBACK').then(result => {
+						client.release();
+						observer.error(error);
+					});
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	},
+	/**
+	 * Zatwierdzenie kontaktu.
+	 * 
+	 * @param uz_id
+	 * @param data.contactId
+	 */
+	confirmUsersInvToContacts: (uz_id: number, data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('BEGIN').then(result => {
+					return client.query('SELECT * FROM kontakty WHERE (ko_id=$1)', [data.contactId]).then(result => {
+						if (result.rows.length === 1 && Number(result.rows[0].ko_uz_id_od) === uz_id && Number(result.rows[0].ko_ks_id) === kontaktyStatusy.oczekujacy) {
+							let firstContact = result.rows[0];
+							return client.query('SELECT * FROM kontakty WHERE (ko_uz_id_od=$1) AND (ko_uz_id_do=$2)', [firstContact.ko_uz_id_do, firstContact.ko_uz_id_od]).then(result => {
+								if (result.rows.length === 1 && Number(result.rows[0].ko_ks_id) === kontaktyStatusy.oczekujacy) {
+									let secondContact = result.rows[0];
+									return client.query('UPDATE kontakty SET ko_ks_id=$1 WHERE (ko_id=$2)', [kontaktyStatusy.aktywny, firstContact.ko_id]).then(result => {
+										return client.query('UPDATE kontakty SET ko_ks_id=$1 WHERE (ko_id=$2)', [kontaktyStatusy.aktywny, secondContact.ko_id]).then(result => {
+											return client.query('COMMIT').then(result => {
+												client.release();
+												observer.next({ status: 0, message: 'Poprawnie zaakceptowano kontakt.', data: {} });
+												observer.complete();
+											});
+										});
+									});
+								}
+								else {
+									return Promise.reject(new Error('Nieprawidłowy identyfikator kontaktu (2).'));
+								}
+							});
+						}
+						else {
+							return Promise.reject(new Error('Nieprawidłowy identyfikator kontaktu (1).'));
+						}
+					});
+				}).catch(error => {
+					client.query('ROLLBACK').then(result => {
+						client.release();
+						observer.error(error);
+					});
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
+		});
+	}
+};
+
+/**
+ * Obiekt odpowiedzialny za rejestrowanie i wczytywanie wiadomości.
+ */
+const dataModelMessages = {
+	/**
+	 * Zapisanie wiadomości.
+	 * 
+	 * @param data.type
+	 * @param data.srcUserId
+	 * @param data.destUserId
+	 * @param data.message
+	 */
+	saveChatMessage: (data: any): Observable<any> => {
+		return Observable.create((observer: Subscriber<any>) => {
+			pool.connect().then(client => {
+				return client.query('BEGIN').then(result => {
+//					return client.query('INSERT INTO wiadomosci (wi_wt_id, wi_uz_id_od, wi_uz_id_do, wi_tresc) VALUES ($1, $2, $3, $4)', [data.type, data.srcUserId, data.destUserId, data.message]).then(result => {
+//						return client.query(`SELECT currval(pg_get_serial_sequence('wiadomosci', 'wi_id')) AS id`).then(result => {
+//							return client.query('SELECT * FROM wiadomosci WHERE (wi_id=$1)', [result.rows[0].id]).then(result => {
+//								if (result.rows.length === 1) {
+//									let wiadomosc: any = result.rows[0];
+									let wiadomosc: any = { testowy: 'xxxxxxxxxxxxxxxxxxx'};
+console.log('wiadomosc: ' + JSON.stringify(wiadomosc));
+									return client.query('COMMIT').then(result => {
+console.log('9: saveChatMessage');
+										client.release();
+console.log('9.1: saveChatMessage');
+										observer.next({ status: 0, message: 'Zapisano wiadomość.', data: {} });
+console.log('9.2: saveChatMessage');
+										observer.complete();
+									});
+//								}
+//								else {
+//console.log('10: saveChatMessage');
+//									return Promise.reject(new Error('Błąd przy zapisywaniu wiadomości.'));
+//								}
+//							});
+//						});
+//					});
+				}).catch(error => {
+console.log('11: saveChatMessage');
+					client.query('ROLLBACK').then(result => {
+						client.release();
+						observer.error(error);
+					});
+				});
+			}).catch(error => {
+				observer.error(error);
+			});
 		});
 	}
 };
 
 const dataModel = {
-	userLogin: (data: any): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					user.findByEmail(client, { email: data.email }, (err, value) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							let results = [];
-							for (let i = 0; i < value.length; i += 1) {
-								if (bcrypt.compareSync(data.password, value[i].uz_haslo)) {
-									results.push(value[i]);
-								}
-							}
-							if (results.length === 1) {
-								let tokenData = { uz_id: results[0].uz_id, uz_login: results[0].uz_login };
-								let token = jwt.sign(tokenData, serverConfig.jsonwebtoken.secret, { expiresIn: 60 * 24 });
-								observer.next({ status: 0, message: 'Poprawnie zalogowano użytkownika.', data: { token: token, login: results[0].uz_login }});
-								observer.complete();
-							}
-							else {
-								observer.error(new Error('Nieprawidłowy adres e-mail albo hasło użytkownika.'));
-							}
-						}
-					});
-				}
-			});
-		});
-	},
-	userRegister: (data: any): Observable<any> => {
+	/*
+	saveChatMessage: (data: any): Observable<any> => {
 		return Observable.create((observer: Subscriber<any>) => {
 			pool.connect((err, client, done) => {
 				if (err) {
@@ -220,7 +469,7 @@ const dataModel = {
 							observer.error(err);
 						}
 						else {
-							user.findByEmail(client, { email: data.email }, (err, value) => {
+							messages.save(client, { type: data.type, srcUserId: data.srcUserId, destUserId: data.destUserId, message: data.message }, (err, value) => {
 								if (err) {
 									client.query('ROLLBACK', (error) => {
 										done();
@@ -228,390 +477,35 @@ const dataModel = {
 									});
 								}
 								else {
-									if (value.length === 0) {
-										user.findByLogin(client, { login: data.login }, (err, value) => {
-											if (err) {
-												client.query('ROLLBACK', (error) => {
-													done();
-													observer.error(err);
-												});
-											}
-											else {
-												if (value.length === 0) {
-													user.save(client, { login: data.login, email: data.email, password: data.password }, (err, value) => {
-														if (err) {
-															client.query('ROLLBACK', (error) => {
-																done();
-																observer.error(err);
-															});
-														}
-														else {
-															client.query('COMMIT', (err, result) => {
-																if (err) {
-																	done();
-																	observer.error(err);
-																}
-																else {
-																	done();
-																	observer.next({ status: 0, message: 'Poprawnie zarejestrowano nowego użytkownika.' });
-																	observer.complete();
-																}
-															});
-														}
-													});
-												}
-												else {
-													client.query('ROLLBACK', (error) => {
-														done();
-														observer.error(new Error('Użytkownik o podanym loginie jest już zarejestrowany.'));
-													});
-												}
-											}
-										});
-									}
-									else {
-										client.query('ROLLBACK', (error) => {
-											done();
-											observer.error(new Error('Użytkownik o podanym adresie e-mail jest już zarejestrowany.'));
-										});
-									}
-								}
-							});
-						}
-					});
-				}
-			});
-		});
-	},
-	findUsersNotInContacts: (uz_id: number, data: any): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					user.findNotInContacts(client, { uz_id: uz_id, login: data.login }, (err, value) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							observer.next({ status: 0, message: 'Lista użytkowników.', data: value });
-							observer.complete();
-						}
-					});
-				}
-			});
-		});
-	},
-	inviteUserToContacts: (uz_id: number, data: any): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					client.query('BEGIN', (err) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							contacts.findByUsers(client, { ko_uz_id_od: uz_id, ko_uz_id_do: data.userId }, (err, value) => {
-								if (err) {
-									client.query('ROLLBACK', (error) => {
-										done();
-										observer.error(err);
-									});
-								}
-								else {
-									// rejestracja związków w obie strony (uzytkownik1 -> użytkownik2, użytkownik2 -> użytkownik1)
-									if (value.length === 0) {
-										contacts.save(client, { ko_uz_id_start: uz_id, ko_uz_id_od: uz_id, ko_uz_id_do: data.userId }, (err, value) => {
-											if (err) {
-												client.query('ROLLBACK', (error) => {
-													done();
-													observer.error(err);
-												});
-											}
-											else {
-												contacts.save(client, { ko_uz_id_start: uz_id, ko_uz_id_od: data.userId, ko_uz_id_do: uz_id }, (err, value) => {
-													if (err) {
-														client.query('ROLLBACK', (error) => {
-															done();
-															observer.error(err);
-														});
-													}
-													else {
-														client.query('COMMIT', (err, result) => {
-															if (err) {
-																done();
-																observer.error(err);
-															}
-															else {
-																done();
-																observer.next({ status: 0, message: 'Poprawnie zaproszono nowego użytkownika do kontaktów.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
-																observer.complete();
-															}
-														});
-													}
-												});
-											}
-										});
-									}
-									else {
-										if (value[0].ko_status === (-1)) {
-											contacts.updateStatus(client, { ko_id: value[0].ko_id, ko_status: 2 }, (err, value) => {
-												if (err) {
-													client.query('ROLLBACK', (error) => {
-														done();
-														observer.error(err);
-													});
-												}
-												else {
-													client.query('COMMIT', (err, result) => {
-														if (err) {
-															done();
-															observer.error(err);
-														}
-														else {
-															done();
-															observer.next({ status: 0, message: 'Poprawnie odnowiono zaproszenie nowego użytkownika do kontaktów.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
-															observer.complete();
-														}
-													});
-												}
+									messages.findById(client, { wi_id: value[0].id }, (err, value) => {
+										if (err) {
+											client.query('ROLLBACK', (error) => {
+												done();
+												observer.error(err);
 											});
 										}
 										else {
-											observer.next({ status: 1, message: 'Użytkownik już jest w kontaktach.', data: { sourceUserId: uz_id, targetUserId: data.userId } });
-											observer.complete();
+											if (value.length === 1) {
+												client.query('COMMIT', (err, result) => {
+													if (err) {
+														done();
+														observer.error(err);
+													}
+													else {
+														done();
+														observer.next({ status: 0, message: 'Zapisano wiadomość.', data: value[0] });
+														observer.complete();
+													}
+												});
+											}
+											else {
+												client.query('ROLLBACK', (error) => {
+													done();
+													observer.error(err);
+												});
+											}
 										}
-									}
-								}
-							});
-						}
-					});
-				}
-			});
-		});
-	},
-	getNumWaitingInvitations: (uz_id: number): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					contacts.getNumWaitingInvitations(client, { uz_id: uz_id }, (err, value) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							observer.next({ status: 0, message: 'Poprawnie pobrano liczbę oczekujących zaproszeń do kontaktów.', data: value[0].ile });
-							observer.complete();
-						}
-					});
-				}
-			});
-		});
-	},
-	findContacts: (uz_id: number, data: any): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					contacts.getList(client, { uz_id: uz_id, type: data.type }, (err, value) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							observer.next({ status: 0, message: 'Lista kontaktów.', data: value });
-							observer.complete();
-						}
-					});
-				}
-			});
-		});
-	},
-	deleteUserFromContacts: (uz_id: number, data: any): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					client.query('BEGIN', (err) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							contacts.findById(client, { ko_id: data.contactId }, (err, value) => {
-								if (err) {
-									client.query('ROLLBACK', (error) => {
-										done();
-										observer.error(err);
 									});
-								}
-								else {
-									if (value.length === 1 && value[0].ko_uz_id_od === uz_id && value[0].ko_status !== (-1)) {
-										let firstContact = value[0];
-										contacts.findByUsers(client, { ko_uz_id_od: firstContact.ko_uz_id_do, ko_uz_id_do: firstContact.ko_uz_id_od }, (err, value) => {
-											if (err) {
-												client.query('ROLLBACK', (error) => {
-													done();
-													observer.error(err);
-												});
-											}
-											else {
-												if (value.length === 1 && value[0].ko_status !== (-1)) {
-													let secondContact = value[0];
-													contacts.updateStatus(client, { ko_id: firstContact.ko_id, ko_status: (-1)}, (err, value) => {
-														if (err) {
-															client.query('ROLLBACK', (error) => {
-																done();
-																observer.error(err);
-															});
-														}
-														else {
-															contacts.updateStatus(client, { ko_id: secondContact.ko_id, ko_status: (-1)}, (err, value) => {
-																if (err) {
-																	client.query('ROLLBACK', (error) => {
-																		done();
-																		observer.error(err);
-																	});
-																}
-																else {
-																	client.query('COMMIT', (err, result) => {
-																		if (err) {
-																			done();
-																			observer.error(err);
-																		}
-																		else {
-																			done();
-																			observer.next({ status: 0, message: 'Poprawnie usunięto kontakt.', data: {} });
-																			observer.complete();
-																		}
-																	});
-																}
-															});
-														}
-													});
-												}
-												else {
-													client.query('ROLLBACK', (error) => {
-														done();
-														observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
-													});
-												}
-											}
-										});
-									}
-									else {
-										client.query('ROLLBACK', (error) => {
-											done();
-											observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
-										});
-									}
-								}
-							});
-						}
-					});
-				}
-			});
-		});
-	},
-	confirmUsersInvToContacts: (uz_id: number, data: any): Observable<any> => {
-		return Observable.create((observer: Subscriber<any>) => {
-			pool.connect((err, client, done) => {
-				if (err) {
-					done();
-					observer.error(err);
-				}
-				else {
-					client.query('BEGIN', (err) => {
-						if (err) {
-							done();
-							observer.error(err);
-						}
-						else {
-							contacts.findById(client, { ko_id: data.contactId }, (err, value) => {
-								if (err) {
-									client.query('ROLLBACK', (error) => {
-										done();
-										observer.error(err);
-									});
-								}
-								else {
-									if (value.length === 1 && value[0].ko_uz_id_od === uz_id && value[0].ko_status === 2) {
-										let firstContact = value[0];
-										contacts.findByUsers(client, { ko_uz_id_od: firstContact.ko_uz_id_do, ko_uz_id_do: firstContact.ko_uz_id_od }, (err, value) => {
-											if (err) {
-												client.query('ROLLBACK', (error) => {
-													done();
-													observer.error(err);
-												});
-											}
-											else {
-												if (value.length === 1 && value[0].ko_status === 2) {
-													let secondContact = value[0];
-													contacts.updateStatus(client, { ko_id: firstContact.ko_id, ko_status: 1}, (err, value) => {
-														if (err) {
-															client.query('ROLLBACK', (error) => {
-																done();
-																observer.error(err);
-															});
-														}
-														else {
-															contacts.updateStatus(client, { ko_id: secondContact.ko_id, ko_status: 1}, (err, value) => {
-																if (err) {
-																	client.query('ROLLBACK', (error) => {
-																		done();
-																		observer.error(err);
-																	});
-																}
-																else {
-																	client.query('COMMIT', (err, result) => {
-																		if (err) {
-																			done();
-																			observer.error(err);
-																		}
-																		else {
-																			done();
-																			observer.next({ status: 0, message: 'Poprawnie zaakceptowano kontakt.', data: {} });
-																			observer.complete();
-																		}
-																	});
-																}
-															});
-														}
-													});
-												}
-												else {
-													client.query('ROLLBACK', (error) => {
-														done();
-														observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
-													});
-												}
-											}
-										});
-									}
-									else {
-										client.query('ROLLBACK', (error) => {
-											done();
-											observer.error(new Error('Nieprawidłowy identyfikator kontaktu.'));
-										});
-									}
 								}
 							});
 						}
@@ -620,6 +514,7 @@ const dataModel = {
 			});
 		});
 	}
+	*/
 };
 
-export { dataModel }
+export { dataModel, dataModelUsers, dataModelContacts, dataModelMessages }

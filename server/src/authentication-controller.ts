@@ -3,7 +3,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subscriber } from 'rxjs/Subscriber';
 
 import { serverConfig } from './server-config';
-import { dataModel } from './data-model';
+import { dataModel, dataModelUsers } from './data-model';
 
 const verifyToken = (token: string, callback): void => {
 	if (token) {
@@ -50,13 +50,13 @@ const authenticationCtrl = {
 		});
 	},
 	login: (data: any): Observable<any> => {
-		return dataModel.userLogin({
+		return dataModelUsers.userLogin({
 			email: data.email,
 			password: data.password
 		});
 	},
 	register: (data: any): Observable<any> => {
-		return dataModel.userRegister({
+		return dataModelUsers.userRegister({
 			login: data.login,
 			email: data.email,
 			password: data.password
