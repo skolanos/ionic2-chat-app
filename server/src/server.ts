@@ -64,8 +64,8 @@ console.log('przed zapisaniem wiadomości');
 console.log('po zapisaniu wiadomości: ' + JSON.stringify(value));
 					let srcSocket: SocketIO.Socket = socketIoWraper.findByUserId(token.uz_id);
 					let destSocket: SocketIO.Socket = socketIoWraper.findByUserId(data.destUserId);
+					srcSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
 					if (srcSocket && destSocket) {
-						srcSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
 						destSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
 					}
 					else {

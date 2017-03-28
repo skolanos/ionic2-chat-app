@@ -1,6 +1,6 @@
 import { Observable } from 'rxjs/Observable';
 
-import { dataModel, dataModelMessages } from './data-model';
+import { dataModelMessages } from './data-model';
 import { stringTools } from './string-tools';
 
 const messageType = {
@@ -14,7 +14,9 @@ const chatCtrl = {
 			msgType = messageType.privateMessage;
 		}
 		else {
-			throw(new Error('Nieznany typ wiadomości:' + data.type));
+			return Observable.create(observer => {
+				observer.error(new Error('Nieznany typ wiadomości:' + data.type));
+			});
 		}
 
 		return dataModelMessages.saveChatMessage({ type: msgType, srcUserId: data.srcUserId, destUserId: data.destUserId, message: data.message });

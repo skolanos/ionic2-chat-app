@@ -3,7 +3,7 @@ import { Observable } from 'rxjs/Observable';
 import { Subscriber } from 'rxjs/Subscriber';
 
 import { serverConfig } from './server-config';
-import { dataModel, dataModelUsers } from './data-model';
+import { dataModelUsers } from './data-model';
 
 const verifyToken = (token: string, callback): void => {
 	if (token) {

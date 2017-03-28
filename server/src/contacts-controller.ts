@@ -1,6 +1,6 @@
 import { Observable } from 'rxjs/Observable';
 
-import { dataModel, dataModelContacts } from './data-model';
+import { dataModelContacts } from './data-model';
 import { stringTools } from './string-tools';
 
 const contactsCtrl = {
