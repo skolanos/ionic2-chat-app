@@ -29,14 +29,6 @@ export class SocketioService {
 	public getSocket(): any {
 		return this.socket;
 	}
-	public on(event_name: string): Observable<any> {
-		return Observable.create((observer: Subscriber<any>) => {
-			this.socket.on(event_name, (data) => {
-				observer.next(data);
-				observer.complete();
-			});
-		});
-	}
 	public emitLogin(): void {
 		this.socket.emit('login', { token: this.authenticationService.getUserToken(), text: '' });
 	}

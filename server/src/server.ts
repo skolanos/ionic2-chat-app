@@ -52,31 +52,24 @@ io.sockets.on('connection', (socket) => {
 		});
 	});
 	socket.on('private-message', (data) => {
-/*
 		authenticationCtrl.authenticate(data.token, (err, value) => {
 			if (err) {
 				console.log('Event(\'private-message\'): błąd autentykacji użytkownika');
 			}
 			else {
 				let token: any = value;
-console.log('przed zapisaniem wiadomości');
 				chatCtrl.saveMessage({ type: 'private-message', srcUserId: token.uz_id, destUserId: data.destUserId, message: data.text }).subscribe(value => {
-console.log('po zapisaniu wiadomości: ' + JSON.stringify(value));
 					let srcSocket: SocketIO.Socket = socketIoWraper.findByUserId(token.uz_id);
 					let destSocket: SocketIO.Socket = socketIoWraper.findByUserId(data.destUserId);
-					srcSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
-					if (srcSocket && destSocket) {
-						destSocket.emit('private-message', { type: 'message', time: value[0].wi_data, login: token.uz_login, text: value[0].wi_tresc });
-					}
-					else {
-						console.log('Event(\'private-message\'): obecnie brak obsługi dla użytkownika który nie jest zalogowany');
+					srcSocket.emit('private-message', { type: 'private-message', time: value.data.wi_data, login: token.uz_login, text: value.data.wi_tresc });
+					if (destSocket) {
+						destSocket.emit('private-message', { type: 'private-message', time: value.data.wi_data, login: token.uz_login, text: value.data.wi_tresc });
 					}
 				}, error => {
 					console.log('Event(\'private-message\'): wystąpił błąd ' + error);
 				});
 			}
 		});
-*/
 	});
 });
 

@@ -383,26 +383,19 @@ const dataModelMessages = {
 							client.query('SELECT * FROM wiadomosci WHERE (wi_id=$1)', [result.rows[0].id]).then(result => {
 								if (result.rows.length === 1) {
 									let wiadomosc: any = result.rows[0];
-//									let wiadomosc: any = { testowy: 'xxxxxxxxxxxxxxxxxxx'};
-console.log('wiadomosc: ' + JSON.stringify(wiadomosc));
 									return client.query('COMMIT').then(result => {
-console.log('9: saveChatMessage');
 										client.release();
-console.log('9.1: saveChatMessage');
 										observer.next({ status: 0, message: 'Zapisano wiadomość.', data: wiadomosc });
-console.log('9.2: saveChatMessage');
 										observer.complete();
 									});
 								}
 								else {
-console.log('10: saveChatMessage');
 									throw(new Error('Błąd przy zapisywaniu wiadomości.'));
 								}
 							});
 						});
 					});
 				}).catch(error => {
-console.log('11: saveChatMessage');
 					client.query('ROLLBACK').then(result => {
 						client.release();
 						observer.error(error);

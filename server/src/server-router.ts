@@ -4,6 +4,7 @@ import { stringTools } from './string-tools';
 import { authenticationCtrl } from './authentication-controller';
 import { contactsCtrl } from './contacts-controller';
 import { socketIoWraper } from './socket-io-wraper';
+import { chatCtrl } from './chat-controller';
 
 const serverRouter = express.Router();
 
